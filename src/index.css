@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    /* Apply the Void background and new UI font globally */
+    @apply bg-dark text-white font-sans overflow-x-hidden;
+    background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
+    min-height: 100vh;
+  }
+
+  /* Target all headings to use the new Serif font */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight;
+  }
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar to match the dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FFD700;
+}
