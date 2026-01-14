@@ -8,11 +8,11 @@
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
     min-height: 100vh;
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: auto; /* Fixes Mobile Scroll */
   }
 }
 
-/* --- SCROLL FIXES --- */
+/* --- GLOBAL SCROLL FIXES --- */
 html, body {
   height: auto !important;
   min-height: 100% !important;
@@ -28,19 +28,26 @@ html, body {
   flex-direction: column;
 }
 
-/* --- 3D BACKGROUND FIX --- */
-/* Only target the Stars, NOT the Burger */
+/* --- 3D BACKGROUND FIX (Crucial) --- */
+/* This ID targets ONLY the Star Background, so the Burger stays visible */
 #star-canvas-container {
   position: fixed !important;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: -1; /* Behind everything */
+  z-index: -1; 
   pointer-events: none;
 }
 
-#star-canvas-container canvas {
-  width: 100% !important;
-  height: 100% !important;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
 }
