@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore'; // Removed orderBy/limit from import
+import { collection, query, where, onSnapshot } from 'firebase/firestore'; // <--- IMPORT onSnapshot
 import { useAuth } from '../context/AuthContext';
 import { FiCheckCircle, FiBox } from 'react-icons/fi';
 
@@ -11,50 +11,45 @@ export default function Delivery() {
   const [order, setOrder] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
 
+  // --- REAL-TIME LISTENER (Replaces the old fetchLastOrder) ---
   useEffect(() => {
     if (!user) return;
 
-    const fetchLastOrder = async () => {
-      try {
-        // FIX: Query ONLY by email (removes the need for complex Firestore Indexes)
-        const q = query(collection(db, "orders"), where("userEmail", "==", user.email));
-        const snapshot = await getDocs(q);
+    // 1. Listen for updates instantly
+    const q = query(collection(db, "orders"), where("userEmail", "==", user.email));
+    
+    // This function runs every time the database changes
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        // 2. Sort to find the newest order manually (Safest way)
+        const allOrders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        
+        allOrders.sort((a, b) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+          return dateB - dateA; // Newest first
+        });
 
-        if (!snapshot.empty) {
-          // FIX: Sort the results manually in Javascript (Newest First)
-          const allOrders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-          
-          const sortedOrders = allOrders.sort((a, b) => {
-            // Protect against missing dates
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-            return dateB - dateA; // Newest first
-          });
+        const latestOrder = allOrders[0];
+        setOrder(latestOrder);
 
-          // Grab the very first one (Latest)
-          const latestOrder = sortedOrders[0];
-          setOrder(latestOrder);
-
-          // Calculate Timer Logic
-          if (latestOrder.createdAt && latestOrder.status !== 'Completed') {
-            const createdTime = latestOrder.createdAt.toDate ? latestOrder.createdAt.toDate().getTime() : Date.now();
-            const now = new Date().getTime();
-            const elapsedSeconds = Math.floor((now - createdTime) / 1000);
-            const remaining = (45 * 60) - elapsedSeconds;
-            setTimeLeft(remaining > 0 ? remaining : 0);
-          } else {
-            setTimeLeft(0);
-          }
+        // 3. Update Timer Logic
+        if (latestOrder.createdAt && latestOrder.status !== 'Completed') {
+          const createdTime = latestOrder.createdAt.toDate ? latestOrder.createdAt.toDate().getTime() : Date.now();
+          const elapsedSeconds = Math.floor((Date.now() - createdTime) / 1000);
+          const remaining = (45 * 60) - elapsedSeconds;
+          setTimeLeft(remaining > 0 ? remaining : 0);
+        } else {
+          setTimeLeft(0);
         }
-      } catch (error) {
-        console.error("Error fetching order:", error);
       }
-    };
+    });
 
-    fetchLastOrder();
+    // Cleanup listener when leaving page
+    return () => unsubscribe();
   }, [user]);
 
-  // Timer Tick
+  // Timer Countdown
   useEffect(() => {
     if (timeLeft <= 0) return;
     const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
@@ -99,34 +94,16 @@ export default function Delivery() {
 
         {/* Status Tracker Bar */}
         <div className="mb-12 relative px-4">
-          {/* Grey Background Line */}
           <div className="absolute top-5 left-4 right-4 h-1 bg-white/10 rounded-full z-0"></div>
-          
-          {/* Animated Progress Line */}
-          <div 
-            className="absolute top-5 left-4 h-1 bg-primary rounded-full z-0 transition-all duration-1000 ease-out" 
-            style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-          ></div>
+          <div className="absolute top-5 left-4 h-1 bg-primary rounded-full z-0 transition-all duration-1000 ease-out" style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}></div>
           
           <div className="relative z-10 flex justify-between w-full">
             {steps.map((step, index) => (
               <div key={step} className="flex flex-col items-center gap-3">
-                <div 
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
-                    index <= currentStepIndex 
-                    ? 'bg-primary border-primary text-black scale-110 shadow-[0_0_20px_rgba(255,215,0,0.5)]' 
-                    : 'bg-dark border-white/20 text-gray-500'
-                  }`}
-                >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${index <= currentStepIndex ? 'bg-primary border-primary text-black scale-110 shadow-[0_0_20px_rgba(255,215,0,0.5)]' : 'bg-dark border-white/20 text-gray-500'}`}>
                   {index < currentStepIndex ? <FiCheckCircle size={20} /> : <FiBox size={18} />}
                 </div>
-                <span 
-                  className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${
-                    index <= currentStepIndex ? 'text-white' : 'text-gray-600'
-                  }`}
-                >
-                  {step}
-                </span>
+                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${index <= currentStepIndex ? 'text-white' : 'text-gray-600'}`}>{step}</span>
               </div>
             ))}
           </div>
@@ -135,7 +112,6 @@ export default function Delivery() {
         {/* Order Receipt */}
         <div className="bg-white/5 rounded-xl border border-white/10 p-8 max-w-2xl mx-auto">
           <h3 className="text-xl font-serif font-bold mb-6 border-b border-white/10 pb-4 text-center">Receipt</h3>
-          
           <div className="space-y-4">
             {order.items?.map((item, idx) => (
               <div key={idx} className="flex justify-between items-center text-gray-300 text-sm">
@@ -147,7 +123,6 @@ export default function Delivery() {
               </div>
             ))}
           </div>
-
           <div className="flex justify-between items-center pt-6 mt-6 border-t border-white/10">
             <span className="text-gray-400 uppercase tracking-widest text-xs">Total Amount</span>
             <span className="text-3xl font-serif font-bold text-primary">${order.totalAmount?.toFixed(2)}</span>

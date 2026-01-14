@@ -1,56 +1,63 @@
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, getDocs, updateDoc, deleteDoc, addDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, updateDoc, deleteDoc, addDoc, doc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
-import { FiPackage, FiTrash2, FiPlus, FiUpload, FiLink, FiDatabase, FiRefreshCw } from 'react-icons/fi';
+import { FiPackage, FiTrash2, FiPlus, FiUpload, FiLink, FiRefreshCw } from 'react-icons/fi';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [imageMode, setImageMode] = useState('url'); 
   
   const categories = ['Burger', 'Pizza', 'Fries', 'Wrapsters', 'Fried Chicken', 'Nuggets', 'Sandwiches', 'Dips & Sides', 'Desserts', 'Drinks'];
   const orderStatuses = ['Pending', 'Approved', 'Making', 'Finishing', 'Delivering', 'Completed'];
 
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', category: 'Burger', image: '', description: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', category: 'Burger', image: '', description: '', details: '' });
 
-  const fetchData = async () => {
-    try {
-      const ordersQ = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-      const ordersSnapshot = await getDocs(ordersQ);
-      setOrders(ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      
-      const productsSnapshot = await getDocs(collection(db, "products"));
-      setProducts(productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    } catch (error) { toast.error("Error loading data"); } finally { setLoading(false); }
-  };
+  // REAL-TIME DATA LISTENER
+  useEffect(() => {
+    // 1. Live Orders
+    const qOrders = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    const unsubOrders = onSnapshot(qOrders, (snapshot) => {
+      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
 
-  useEffect(() => { fetchData(); }, []);
+    // 2. Live Products
+    const qProducts = query(collection(db, "products"));
+    const unsubProducts = onSnapshot(qProducts, (snapshot) => {
+      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsubOrders(); unsubProducts(); };
+  }, []);
 
   const handleStatusUpdate = async (orderId, newStatus) => {
-    try {
-      await updateDoc(doc(db, "orders", orderId), { status: newStatus });
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-      toast.success(`Order set to ${newStatus}`);
-    } catch (error) { toast.error("Failed to update"); }
+    try { await updateDoc(doc(db, "orders", orderId), { status: newStatus }); toast.success("Updated!"); } 
+    catch (error) { toast.error("Failed"); }
   };
 
-  // --- NEW: Fix Missing Statuses ---
   const handleRepairDatabase = async () => {
-    if(!window.confirm("Reset ALL orders to 'Pending'? This helps fix missing notifications.")) return;
-    try {
-      const q = query(collection(db, "orders"));
-      const snapshot = await getDocs(q);
-      const promises = snapshot.docs.map(d => updateDoc(doc(db, "orders", d.id), { status: 'Pending' }));
-      await Promise.all(promises);
-      toast.success("All orders reset to Pending!");
-      fetchData(); // Refresh list
-    } catch(err) { toast.error("Repair failed"); }
+    if(!window.confirm("Reset all to Pending?")) return;
+    const promises = orders.map(o => updateDoc(doc(db, "orders", o.id), { status: 'Pending' }));
+    await Promise.all(promises);
+    toast.success("Done");
   };
 
-  // ... (Keep existing Product functions) ...
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    if(!newProduct.image) return toast.error("Image needed");
+    try {
+      await addDoc(collection(db, "products"), { ...newProduct, price: parseFloat(newProduct.price), createdAt: new Date() });
+      toast.success("Added!");
+      setNewProduct({ name: '', price: '', category: 'Burger', image: '', description: '', details: '' });
+    } catch (error) { toast.error("Error"); }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if (window.confirm("Delete?")) await deleteDoc(doc(db, "products", id));
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -60,92 +67,79 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAddProduct = async (e) => {
-    e.preventDefault();
-    if(!newProduct.image) return toast.error("Please add an image");
-    try {
-      await addDoc(collection(db, "products"), { ...newProduct, price: parseFloat(newProduct.price), createdAt: new Date() });
-      toast.success("Product Added!");
-      setNewProduct({ name: '', price: '', category: 'Burger', image: '', description: '' });
-      fetchData();
-    } catch (error) { toast.error("Error adding product"); }
-  };
-
-  const handleBulkLoad = async () => {
-    // ... (Your bulk load logic from before) ...
-    // Just a placeholder to keep file shorter, keep your existing logic here if you have it
-  };
-
-  const handleDeleteProduct = async (id) => {
-    if (!window.confirm("Delete item?")) return;
-    try { await deleteDoc(doc(db, "products", id)); setProducts(prev => prev.filter(p => p.id !== id)); toast.success("Deleted"); } catch (error) { toast.error("Error deleting"); }
-  };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-white">Loading Command Center...</div>;
-
   return (
-    <div className="min-h-screen text-white pt-24 px-4 pb-12 relative z-10">
+    <div className="min-h-screen text-white pt-24 px-4 pb-12">
       <div className="container mx-auto max-w-6xl">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-serif font-bold flex items-center gap-3">
-            <FiPackage className="text-primary" /> Command Center
-          </h1>
-          <div className="bg-white/5 p-1 rounded-lg border border-white/10 flex gap-2">
-            <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded-md text-sm font-bold tracking-widest transition-colors ${activeTab === 'orders' ? 'bg-primary text-black' : 'hover:bg-white/10'}`}>ORDERS</button>
-            <button onClick={() => setActiveTab('menu')} className={`px-4 py-2 rounded-md text-sm font-bold tracking-widest transition-colors ${activeTab === 'menu' ? 'bg-primary text-black' : 'hover:bg-white/10'}`}>MENU</button>
+          <h1 className="text-3xl font-serif font-bold flex gap-2"><FiPackage className="text-primary"/> Command Center</h1>
+          <div className="bg-white/5 p-1 rounded-lg flex gap-2">
+            <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded text-xs font-bold ${activeTab === 'orders' ? 'bg-primary text-black' : ''}`}>ORDERS</button>
+            <button onClick={() => setActiveTab('menu')} className={`px-4 py-2 rounded text-xs font-bold ${activeTab === 'menu' ? 'bg-primary text-black' : ''}`}>MENU</button>
           </div>
         </div>
 
         {activeTab === 'orders' && (
-          <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden">
-             
-             {/* --- NEW BUTTON: REPAIR DATABASE --- */}
-             <div className="p-4 border-b border-white/10 bg-white/5 flex justify-end">
-               <button onClick={handleRepairDatabase} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors border border-primary/30 px-4 py-2 rounded hover:bg-primary/20">
-                 <FiRefreshCw /> Reset All to Pending (Fix Badge)
-               </button>
-             </div>
-
-             <table className="w-full text-left border-collapse">
-              <thead className="bg-white/5 text-gray-300 border-b border-white/10">
-                <tr>
-                  <th className="p-4 text-xs uppercase">ID</th>
-                  <th className="p-4 text-xs uppercase">Customer</th>
-                  <th className="p-4 text-xs uppercase">Status</th>
-                  <th className="p-4 text-xs uppercase">Update</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {orders.map(order => (
-                  <tr key={order.id} className="hover:bg-white/5 transition-colors">
-                    <td className="p-4 font-mono text-sm text-primary">#{order.id.slice(0,6)}</td>
-                    <td className="p-4 text-sm">{order.userEmail}</td>
-                    <td className="p-4">
-                      <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest bg-primary/20 text-primary">
-                        {order.status || 'Missing'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <select 
-                        className="bg-black/50 border border-white/20 rounded px-2 py-1 text-xs text-white outline-none"
-                        value={order.status || 'Pending'}
-                        onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                      >
-                        {orderStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+             <div className="p-4 flex justify-end"><button onClick={handleRepairDatabase} className="text-xs font-bold text-primary flex gap-2 items-center"><FiRefreshCw/> FIX BADGE</button></div>
+             <div className="overflow-x-auto">
+               <table className="w-full text-left">
+                <thead className="bg-white/5 text-gray-300 border-b border-white/10">
+                  <tr><th className="p-4 text-xs">ID</th><th className="p-4 text-xs">User</th><th className="p-4 text-xs">Items</th><th className="p-4 text-xs">Status</th><th className="p-4 text-xs">Action</th></tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {orders.map(order => (
+                    <tr key={order.id} className="hover:bg-white/5">
+                      <td className="p-4 font-mono text-primary">#{order.id.slice(0,5)}</td>
+                      <td className="p-4 text-xs">{order.userEmail}</td>
+                      <td className="p-4 text-xs text-gray-400">{order.items?.map(i => `${i.qty}x ${i.name}`).join(', ')}</td>
+                      <td className="p-4"><span className="px-2 py-1 rounded text-[10px] font-bold bg-primary/20 text-primary">{order.status}</span></td>
+                      <td className="p-4">
+                        <select className="bg-black/50 border border-white/20 rounded px-2 py-1 text-xs text-white" value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value)}>
+                          {orderStatuses.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {/* ... (Menu Tab code remains the same) ... */}
-         {activeTab === 'menu' && (
-          <div className="text-center py-20">Menu Editor (Use previous code here or bulk load)</div>
+        {activeTab === 'menu' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="bg-white/5 p-6 rounded-xl border border-white/10 h-fit">
+              <h3 className="text-xl font-bold mb-4 flex gap-2"><FiPlus className="text-primary"/> Add Item</h3>
+              <form onSubmit={handleAddProduct} className="space-y-4">
+                <input placeholder="Name (e.g. Zinger)" required className="w-full bg-black/30 border border-white/10 p-3 rounded text-white" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="number" required placeholder="Price" className="bg-black/30 border border-white/10 p-3 rounded text-white" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+                  <select className="bg-black/30 border border-white/10 p-3 rounded text-white" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                {/* NEW FIELD: DETAILS */}
+                <input placeholder="Details (e.g. Large, 500ml, 6 pcs)" className="w-full bg-black/30 border border-white/10 p-3 rounded text-white" value={newProduct.details} onChange={e => setNewProduct({...newProduct, details: e.target.value})} />
+                
+                <div className="flex gap-2"><button type="button" onClick={() => setImageMode('url')} className="flex-1 py-2 text-xs font-bold bg-white/5">URL</button><button type="button" onClick={() => setImageMode('file')} className="flex-1 py-2 text-xs font-bold bg-white/5">UPLOAD</button></div>
+                {imageMode === 'url' ? <input placeholder="Image URL" className="w-full bg-black/30 border border-white/10 p-3 rounded text-white" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} /> : <input type="file" onChange={handleImageUpload} className="w-full text-xs text-gray-400"/>}
+                <button className="w-full bg-primary text-black font-bold py-3 rounded">ADD ITEM</button>
+              </form>
+            </div>
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {products.map(p => (
+                <div key={p.id} className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-center gap-4">
+                  <img src={p.image} className="w-12 h-12 rounded object-cover bg-black" />
+                  <div className="flex-1">
+                    <h4 className="font-bold text-white">{p.name}</h4>
+                    <p className="text-gray-400 text-xs">{p.category} • <span className="text-primary">${p.price}</span> {p.details && `• ${p.details}`}</p>
+                  </div>
+                  <button onClick={() => handleDeleteProduct(p.id)} className="text-red-500 hover:text-white"><FiTrash2 /></button>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
-
       </div>
     </div>
   );

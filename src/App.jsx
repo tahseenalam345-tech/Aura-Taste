@@ -5,6 +5,7 @@ import { Stars } from '@react-three/drei';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion'; 
+import MakeYourDeal from './pages/MakeYourDeal';
 
 // --- IMPORTS ---
 import Navbar from './components/common/Navbar';
@@ -57,6 +58,7 @@ function AnimatedRoutes() {
         <Route path="/admin" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
         <Route path="/deals" element={<PageWrapper><Deals /></PageWrapper>} />
         <Route path="/delivery" element={<PageWrapper><Delivery /></PageWrapper>} />
+        <Route path="/make-deal" element={<PageWrapper><MakeYourDeal /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );
