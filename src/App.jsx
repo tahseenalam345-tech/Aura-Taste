@@ -18,9 +18,11 @@ import Delivery from './pages/Delivery';
 import MakeYourDeal from './pages/MakeYourDeal';
 import InstallButton from './components/common/InstallButton'; 
 
+// Find this function in src/App.jsx and replace it:
 function StarBackground() {
   return (
-    <div className="fixed inset-0 z-[-1] bg-dark pointer-events-none">
+    // We added id="star-canvas-container" here
+    <div id="star-canvas-container" className="fixed inset-0 bg-dark pointer-events-none">
       <Canvas camera={{ position: [0, 0, 1] }}>
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
       </Canvas>

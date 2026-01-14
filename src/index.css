@@ -7,16 +7,16 @@
     @apply bg-dark text-white font-sans;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
     min-height: 100vh;
-    overflow-x: hidden; /* No side scroll */
-    overflow-y: scroll; /* Force vertical scroll */
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 }
 
-/* --- THE SCROLL FIX --- */
+/* --- SCROLL FIXES --- */
 html, body {
   height: auto !important;
   min-height: 100% !important;
-  touch-action: pan-y !important; /* Enable swipe */
+  touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -28,13 +28,19 @@ html, body {
   flex-direction: column;
 }
 
-/* Push Stars to background */
-canvas {
+/* --- 3D BACKGROUND FIX --- */
+/* Only target the Stars, NOT the Burger */
+#star-canvas-container {
   position: fixed !important;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: -1 !important;
-  pointer-events: none !important; /* Touch goes THROUGH stars */
+  z-index: -1; /* Behind everything */
+  pointer-events: none;
+}
+
+#star-canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
