@@ -84,7 +84,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <input type="number" placeholder="Base Price (PKR)" className="bg-black/30 p-3 rounded border border-white/10 text-white" value={newItem.basePrice} onChange={e => setNewItem({...newItem, basePrice: e.target.value})} />
                 <select className="bg-black/30 p-3 rounded border border-white/10 text-white" value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value})}>
-                  {['Burger', 'Pizza', 'Wrapsters', 'Fried Chicken', 'Drinks', 'Deals'].map(c => <option key={c} value={c}>{c}</option>)}
+                  {['Burgers', 'Pizza', 'Wrapster', 'Crispy Chicken', 'Fries', 'Twister', 'Shawarma', 'Nuggets', 'Wings', 'Desserts', 'Beverages'].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
