@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// IMPORT YOUR IMAGES HERE
-// (Make sure these exist in src/assets/)
+// Images (Ensure these exist in src/assets/)
 import imgExpand from '../../assets/burger-1-expand.png';
 import imgHalf from '../../assets/burger-2-half.png';
 import imgReady from '../../assets/burger-3-ready.png';
@@ -13,52 +12,48 @@ export default function HeroBurger() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    // Change image every 2.5 seconds (2500ms)
+    // Slower loop for a more premium feel (3 seconds per state)
     const timer = setInterval(() => {
       setIndex((prevIndex) => (prevIndex + 1) % images.length);
-    }, 2500);
+    }, 3000);
 
     return () => clearInterval(timer);
   }, []);
 
   return (
-    <div className="relative w-full h-[350px] md:h-[500px] flex items-center justify-center pointer-events-none select-none">
+    <div className="relative w-full h-full flex items-center justify-center pointer-events-none select-none">
       
-      {/* 1. Global Float Animation (Moves the whole container gently) */}
+      {/* 1. Floating Animation (Idle) */}
       <motion.div
-        animate={{ y: [0, -15, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ y: [0, -20, 0], rotate: [0, 1, 0, -1, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         className="relative w-full h-full flex items-center justify-center"
       >
         
-        {/* 2. The Cross-Fade Sequencer */}
+        {/* 2. Cross-Fade Logic */}
         <AnimatePresence mode='wait'>
           <motion.img
-            key={index} // Key change triggers the animation
+            key={index}
             src={images[index]}
             alt="Premium Burger"
             
-            // INITIAL STATE (Entering)
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            
-            // ACTIVE STATE (Visible)
+            // Smoother entrance/exit
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.05, filter: 'blur(8px)' }}
             
-            // EXIT STATE (Leaving)
-            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            
-            // TIMING CONFIGURATION
             transition={{ 
-              duration: 0.8, 
-              ease: [0.43, 0.13, 0.23, 0.96] // Cinematic easing
+              duration: 1.2, // Slower fade
+              ease: [0.22, 1, 0.36, 1] // "Cinematic" easing curve
             }}
             
-            className="absolute max-w-[90%] max-h-[90%] object-contain drop-shadow-2xl filter"
+            // Responsive sizing: Fits nicely on mobile, larger on desktop
+            className="absolute max-w-[85%] md:max-w-[90%] max-h-[80%] object-contain drop-shadow-2xl"
           />
         </AnimatePresence>
 
-        {/* 3. Glow Effect behind the burger (Optional but looks premium) */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-primary/20 blur-[100px] -z-10 rounded-full" />
+        {/* 3. Subtle Glow Behind */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50%] h-[50%] bg-primary/10 blur-[80px] -z-10 rounded-full" />
         
       </motion.div>
     </div>

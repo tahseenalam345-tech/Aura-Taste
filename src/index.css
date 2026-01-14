@@ -6,36 +6,40 @@
   body {
     @apply bg-dark text-white font-sans;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
-    min-height: 100vh;
+    /* Use dynamic viewport height for mobile browsers */
+    min-height: 100dvh;
     overflow-x: hidden;
-    overflow-y: auto; /* Fixes Mobile Scroll */
+    overflow-y: auto;
   }
 }
 
-/* --- GLOBAL SCROLL FIXES --- */
+/* --- CRITICAL SCROLL FIXES --- */
 html, body {
-  height: auto !important;
-  min-height: 100% !important;
-  touch-action: pan-y !important;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* Allow vertical scroll but prevent horizontal */
+  touch-action: pan-y; 
   -webkit-overflow-scrolling: touch;
 }
 
 #root {
-  min-height: 100vh;
+  /* Allow the app to be at least full screen */
+  min-height: 100dvh;
   position: relative;
-  z-index: 10;
+  z-index: 1;
   display: flex;
   flex-direction: column;
 }
 
-/* --- 3D BACKGROUND FIX (Crucial) --- */
-/* This ID targets ONLY the Star Background, so the Burger stays visible */
+/* --- BACKGROUND LAYER FIX --- */
+/* Ensures stars are visible but NEVER block clicks/swipes */
 #star-canvas-container {
-  position: fixed !important;
+  position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   z-index: -1; 
   pointer-events: none;
 }
