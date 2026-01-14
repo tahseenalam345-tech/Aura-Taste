@@ -4,8 +4,12 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
+
+// 🔔 LOUD NOTIFICATION SOUND
+const ALERT_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export default function Navbar() {
   const { cart } = useCart();
@@ -13,35 +17,68 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const audioRef = useRef(new Audio(ALERT_SOUND));
+  const isFirstLoad = useRef(true); // Prevent sound on page refresh
   const location = useLocation();
 
-  // ⚠️ IMPORTANT: MAKE SURE THIS MATCHES YOUR LOGIN EMAIL EXACTLY
   const ADMIN_EMAIL = "tahseenalam345@gmail.com";
-  
-  // Robust check: ignores capital letters
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
+  // Scroll Effect
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // --- REALTIME BADGE LISTENER ---
+  // --- 🔔 REAL-TIME NOTIFICATION SYSTEM ---
   useEffect(() => {
-    // Only listen if we are the Admin
     if (isAdmin) {
+      // 1. Ask Browser for Permission to show System Popups
+      if (Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
+
+      // 2. Listen for Pending Orders
       const q = query(collection(db, "orders"), where("status", "==", "Pending"));
+      
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        setPendingCount(snapshot.size);
-        console.log("Pending Orders Found:", snapshot.size); // Check Console
+        const count = snapshot.size;
+        setPendingCount(count);
+
+        // Check if a NEW order came in (by looking at changes)
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added" && !isFirstLoad.current) {
+            
+            // A. Play Sound
+            audioRef.current.play().catch(e => console.log("Click page to enable audio"));
+            
+            // B. Show Screen Popup
+            toast("🔥 NEW ORDER RECEIVED!", {
+               icon: '🔔',
+               style: { background: '#FFD700', color: '#000', fontWeight: 'bold' },
+               duration: 6000
+            });
+
+            // C. Show System/Phone Notification (Works if tab is hidden)
+            if (Notification.permission === "granted") {
+              new Notification("New Order @ Aura Taste", {
+                body: "A customer just placed an order! Check Admin Panel.",
+                icon: "/pwa-192x192.png"
+              });
+            }
+          }
+        });
+
+        // After first run, disable the "First Load" flag so future orders make sound
+        isFirstLoad.current = false;
       });
+
       return () => unsubscribe();
     }
-  }, [user, isAdmin]);
+  }, [isAdmin]);
 
   const isActive = (path) => location.pathname === path;
-  
   const navLinks = [
     { name: 'HOME', path: '/' },
     { name: 'MENU', path: '/menu' },
@@ -69,13 +106,11 @@ export default function Navbar() {
             </Link>
           ))}
           
-          {/* ADMIN LINK WITH BADGE */}
           {isAdmin && (
              <Link to="/admin" className={`relative text-xs font-bold tracking-[2px] transition-colors uppercase ${isActive('/admin') ? 'text-primary' : 'text-red-500 hover:text-white'}`}>
                ADMIN
-               {/* RED BADGE */}
                {pendingCount > 0 && (
-                 <span className="absolute -top-3 -right-4 w-5 h-5 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border border-dark">
+                 <span className="absolute -top-3 -right-4 w-5 h-5 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border border-dark shadow-[0_0_10px_#ff0000]">
                    {pendingCount}
                  </span>
                )}
@@ -87,7 +122,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* ICONS & MOBILE MENU BUTTON */}
+        {/* ICONS */}
         <div className="flex items-center gap-4 z-50">
           {user ? (
             <div onClick={logout} className="cursor-pointer relative group">
@@ -98,7 +133,6 @@ export default function Navbar() {
                     <FiUser className="text-white text-xl" />
                  </div>
                )}
-               {/* Green Dot = Admin Online */}
                {isAdmin && <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-black"></span>}
             </div>
           ) : (
@@ -112,14 +146,13 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* HAMBURGER BUTTON (Mobile Only) */}
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-white text-2xl">
             {mobileMenuOpen ? <FiX /> : <FiMenu />}
           </button>
         </div>
       </div>
 
-      {/* MOBILE DROPDOWN MENU */}
+      {/* MOBILE MENU */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div 
@@ -131,15 +164,8 @@ export default function Navbar() {
                 {link.name}
               </Link>
             ))}
-            {isAdmin && (
-              <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-red-500 uppercase flex justify-between items-center">
-                ADMIN PANEL
-                {pendingCount > 0 && <span className="bg-red-600 text-white px-2 py-1 rounded-full text-xs">{pendingCount} New</span>}
-              </Link>
-            )}
-            {!isAdmin && user && (
-              <Link to="/delivery" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-primary uppercase">ORDER STATUS</Link>
-            )}
+            {isAdmin && <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-red-500 uppercase">ADMIN PANEL ({pendingCount})</Link>}
+            {!isAdmin && user && <Link to="/delivery" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-primary uppercase">ORDER STATUS</Link>}
           </motion.div>
         )}
       </AnimatePresence>

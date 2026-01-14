@@ -7,8 +7,8 @@
 ================================ */
 @layer base {
   body {
-    /* Apply the Void background and new UI font globally */
-    @apply bg-dark text-white font-sans overflow-x-hidden;
+    /* Changed: Removed overflow-x-hidden from here to avoid locking */
+    @apply bg-dark text-white font-sans;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
     min-height: 100vh;
   }
@@ -19,15 +19,47 @@
 }
 
 /* ===============================
-   Global Enhancements
+   Global Scroll Fixes
 ================================ */
 
-/* Smooth Scrolling */
 html {
   scroll-behavior: smooth;
+  height: 100%; /* Important for mobile */
 }
 
-/* Custom Scrollbar */
+body {
+  height: 100%; /* Important for mobile */
+  overflow-x: hidden; /* Prevent side scroll */
+  overflow-y: auto; /* Allow vertical scroll */
+  -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+}
+
+/* ===============================
+   ROOT CONTAINER FIX (Crucial)
+================================ */
+#root {
+  /* This allows the app to grow taller than the screen */
+  min-height: 100vh; 
+  height: auto; 
+  position: relative;
+  z-index: 10;
+  overflow-x: hidden;
+}
+
+/* ===============================
+   3D Background Fix
+================================ */
+/* Ensures the stars NEVER block your finger swipe */
+canvas {
+  pointer-events: none !important;
+  touch-action: none !important;
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  z-index: -1 !important;
+}
+
+/* Custom Scrollbar (Desktop only) */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -40,27 +72,4 @@ html {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #FFD700;
-}
-
-/* ===============================
-   FORCE MOBILE SCROLL FIX
-================================ */
-html,
-body {
-  overflow-x: hidden;
-  overflow-y: auto !important;
-  touch-action: pan-y !important;
-  -webkit-overflow-scrolling: touch;
-}
-
-#root {
-  min-height: 100vh;
-  position: relative;
-  z-index: 10;
-}
-
-/* Make sure the stars never block touch */
-canvas {
-  pointer-events: none !important;
-  z-index: -1 !important;
 }

@@ -25,7 +25,7 @@ export default function Home() {
   }, [navigate, isVideoOpen]);
 
   return (
-    <div className="w-full h-screen relative overflow-hidden bg-transparent text-white">
+    <div className="w-full min-h-screen relative overflow-hidden bg-transparent text-white">
       
       {/* --- VIDEO MODAL --- */}
       <AnimatePresence>
