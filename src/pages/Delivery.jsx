@@ -1,135 +1,127 @@
 import { useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore'; // <--- IMPORT onSnapshot
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { FiCheckCircle, FiBox } from 'react-icons/fi';
-
-const steps = ['Pending', 'Approved', 'Making', 'Finishing', 'Delivering', 'Completed'];
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiPackage, FiClock, FiMapPin, FiCheckCircle, FiX } from 'react-icons/fi';
+import OrderTimer from '../components/common/OrderTimer';
 
 export default function Delivery() {
   const { user } = useAuth();
-  const [order, setOrder] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // --- REAL-TIME LISTENER (Replaces the old fetchLastOrder) ---
   useEffect(() => {
     if (!user) return;
-
-    // 1. Listen for updates instantly
-    const q = query(collection(db, "orders"), where("userEmail", "==", user.email));
     
-    // This function runs every time the database changes
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        // 2. Sort to find the newest order manually (Safest way)
-        const allOrders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        
-        allOrders.sort((a, b) => {
-          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-          return dateB - dateA; // Newest first
-        });
-
-        const latestOrder = allOrders[0];
-        setOrder(latestOrder);
-
-        // 3. Update Timer Logic
-        if (latestOrder.createdAt && latestOrder.status !== 'Completed') {
-          const createdTime = latestOrder.createdAt.toDate ? latestOrder.createdAt.toDate().getTime() : Date.now();
-          const elapsedSeconds = Math.floor((Date.now() - createdTime) / 1000);
-          const remaining = (45 * 60) - elapsedSeconds;
-          setTimeLeft(remaining > 0 ? remaining : 0);
-        } else {
-          setTimeLeft(0);
-        }
-      }
+    // Fetch orders for this email
+    const q = query(collection(db, "orders"), where("userEmail", "==", user.email));
+    const unsub = onSnapshot(q, (snapshot) => {
+      // Sort in memory to avoid index requirements
+      const sorted = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => b.createdAt - a.createdAt);
+      setOrders(sorted);
     });
-
-    // Cleanup listener when leaving page
-    return () => unsubscribe();
+    return () => unsub();
   }, [user]);
 
-  // Timer Countdown
-  useEffect(() => {
-    if (timeLeft <= 0) return;
-    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft]);
-
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  const statusSteps = ["Pending", "Approved", "In Kitchen", "Finishing", "Delivering", "Completed"];
+  
+  const getStepStatus = (currentStatus, stepName) => {
+    const currentIndex = statusSteps.indexOf(currentStatus);
+    const stepIndex = statusSteps.indexOf(stepName);
+    if (currentIndex > stepIndex) return 'completed';
+    if (currentIndex === stepIndex) return 'active';
+    return 'pending';
   };
 
-  if (!user) return <div className="min-h-screen pt-32 text-center text-white">Please Login to track orders.</div>;
-  
-  if (!order) return (
-    <div className="min-h-screen bg-transparent text-white pt-32 text-center relative z-10">
-      <h2 className="text-2xl font-bold mb-2">No Active Orders</h2>
-      <p className="text-gray-400">Head to the Menu to place your first order!</p>
-    </div>
-  );
-
-  const currentStepIndex = steps.indexOf(order.status || 'Pending');
-
   return (
-    <div className="min-h-screen bg-transparent text-white pt-24 px-4 pb-12 relative z-10">
-      <div className="container mx-auto max-w-4xl">
-        
-        {/* Header & Timer */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-12 bg-white/5 p-8 rounded-2xl border border-white/10 backdrop-blur-md">
-          <div>
-            <h1 className="text-3xl font-serif font-bold mb-2">Order Status</h1>
-            <p className="text-gray-400 font-mono text-sm">ORDER ID: #{order.id?.slice(0,8).toUpperCase()}</p>
-          </div>
-          <div className="text-center mt-6 md:mt-0">
-            <div className="text-xs uppercase tracking-[3px] text-gray-400 mb-2">Estimated Arrival</div>
-            <div className={`text-6xl font-mono font-bold tracking-tighter ${timeLeft < 300 ? 'text-red-500' : 'text-primary'}`}>
-              {order.status === 'Completed' ? "ARRIVED" : formatTime(timeLeft)}
+    <div className="min-h-screen pt-24 px-4 pb-20 max-w-4xl mx-auto">
+      <h1 className="text-4xl font-serif font-bold text-white mb-8 text-center">My <span className="text-primary">Orders</span></h1>
+
+      <div className="grid gap-4">
+        {orders.length === 0 && <div className="text-center text-gray-500">No orders placed yet.</div>}
+
+        {orders.map(order => (
+          <div 
+            key={order.id} 
+            onClick={() => setSelectedOrder(order)}
+            className="bg-white/5 border border-white/10 p-6 rounded-xl cursor-pointer hover:border-primary transition-colors flex justify-between items-center"
+          >
+            <div>
+              <h3 className="text-lg font-bold text-white">Order #{order.id.slice(-5).toUpperCase()}</h3>
+              <p className="text-sm text-gray-400">{order.items?.length} Items • Rs. {order.totalAmount}</p>
             </div>
-            <div className="text-xs text-gray-500 mt-2 uppercase tracking-widest">Minutes Remaining</div>
+            <div className={`px-4 py-2 rounded font-bold text-sm ${order.status === 'Completed' ? 'bg-green-500/20 text-green-500' : 'bg-primary/20 text-primary'}`}>
+              {order.status}
+            </div>
           </div>
-        </div>
-
-        {/* Status Tracker Bar */}
-        <div className="mb-12 relative px-4">
-          <div className="absolute top-5 left-4 right-4 h-1 bg-white/10 rounded-full z-0"></div>
-          <div className="absolute top-5 left-4 h-1 bg-primary rounded-full z-0 transition-all duration-1000 ease-out" style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}></div>
-          
-          <div className="relative z-10 flex justify-between w-full">
-            {steps.map((step, index) => (
-              <div key={step} className="flex flex-col items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${index <= currentStepIndex ? 'bg-primary border-primary text-black scale-110 shadow-[0_0_20px_rgba(255,215,0,0.5)]' : 'bg-dark border-white/20 text-gray-500'}`}>
-                  {index < currentStepIndex ? <FiCheckCircle size={20} /> : <FiBox size={18} />}
-                </div>
-                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${index <= currentStepIndex ? 'text-white' : 'text-gray-600'}`}>{step}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Order Receipt */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-8 max-w-2xl mx-auto">
-          <h3 className="text-xl font-serif font-bold mb-6 border-b border-white/10 pb-4 text-center">Receipt</h3>
-          <div className="space-y-4">
-            {order.items?.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-center text-gray-300 text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="bg-white/10 w-6 h-6 flex items-center justify-center rounded text-xs font-bold text-primary">{item.qty}</span>
-                  <span>{item.name}</span>
-                </div>
-                <span className="font-mono">${(item.price * item.qty).toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between items-center pt-6 mt-6 border-t border-white/10">
-            <span className="text-gray-400 uppercase tracking-widest text-xs">Total Amount</span>
-            <span className="text-3xl font-serif font-bold text-primary">${order.totalAmount?.toFixed(2)}</span>
-          </div>
-        </div>
-
+        ))}
       </div>
+
+      {/* --- ORDER DETAILS POPUP --- */}
+      <AnimatePresence>
+        {selectedOrder && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setSelectedOrder(null)} />
+            
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#121212] w-full max-w-lg rounded-2xl border border-white/10 relative z-20 overflow-hidden shadow-2xl"
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Order Status</h2>
+                    <p className="text-gray-400 text-xs">ID: {selectedOrder.id}</p>
+                  </div>
+                  <button onClick={() => setSelectedOrder(null)}><FiX className="text-white text-xl"/></button>
+                </div>
+
+                {/* 1. TIMER SECTION */}
+                <div className="bg-white/5 p-4 rounded-xl mb-6 border border-white/5">
+                  <OrderTimer createdAt={selectedOrder.createdAt} />
+                </div>
+
+                {/* 2. LIVE STATUS TRACKER */}
+                <div className="mb-6 space-y-4">
+                  {statusSteps.map((step, i) => {
+                    const st = getStepStatus(selectedOrder.status, step);
+                    return (
+                       <div key={step} className={`flex items-center gap-4 ${st === 'pending' ? 'opacity-30' : 'opacity-100'}`}>
+                         <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${st === 'active' ? 'border-primary text-primary animate-pulse' : st === 'completed' ? 'border-green-500 bg-green-500 text-black' : 'border-gray-500'}`}>
+                           {st === 'completed' ? <FiCheckCircle /> : i + 1}
+                         </div>
+                         <span className={`font-bold ${st === 'active' ? 'text-primary' : 'text-white'}`}>{step}</span>
+                       </div>
+                    )
+                  })}
+                </div>
+
+                {/* 3. DIGITAL RECEIPT */}
+                <div className="border-t border-white/10 pt-4">
+                  <h4 className="font-bold text-white mb-2">Receipt</h4>
+                  <div className="bg-black p-4 rounded text-sm text-gray-400 font-mono space-y-1">
+                    {selectedOrder.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{item.qty}x {item.name}</span>
+                        <span>{item.price * item.qty}</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-gray-800 mt-2 pt-2 flex justify-between text-white font-bold">
+                      <span>TOTAL</span>
+                      <span>Rs. {selectedOrder.totalAmount}</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

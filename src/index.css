@@ -6,45 +6,60 @@
   body {
     @apply bg-dark text-white font-sans;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto; /* CRITICAL: Enables Vertical Scroll */
   }
 }
 
-/* --- FULL PAGE SCROLL SNAP --- */
-html {
-  /* This enables the snapping behavior */
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-  height: 100%;
-  overflow-y: scroll;
-}
-
-body {
-  height: 100%;
-  overflow-y: scroll;
+/* --- GLOBAL SCROLL FIX --- */
+html, body {
+  height: auto !important;
+  min-height: 100% !important;
+  touch-action: pan-y !important; /* CRITICAL: Enables Swipe */
+  -webkit-overflow-scrolling: touch;
 }
 
 #root {
-  height: 100%;
+  min-height: 100vh;
+  position: relative;
+  z-index: 10;
 }
 
-/* Sections must be full height to snap correctly */
-section, .snap-section {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-/* --- UTILITIES --- */
-/* Ensures stars are fixed behind everything */
+/* --- STAR BACKGROUND FIX --- */
 #star-canvas-container {
-  position: fixed;
+  position: fixed !important;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: -1; 
+  z-index: -1; /* Behind everything */
   pointer-events: none;
 }
 
-::-webkit-scrollbar {
-  width: 0px; /* Hide scrollbar for cleaner look */
+/* --- SMOOTH MARQUEE ANIMATION --- */
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-scroll {
+  display: flex;
+  width: max-content; /* Force items to sit in a long line */
+  animation: scroll 40s linear infinite; /* Smooth continuous movement */
+}
+
+/* Pause animation when user touches or hovers */
+.animate-scroll:hover, 
+.animate-scroll:active {
+  animation-play-state: paused;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
