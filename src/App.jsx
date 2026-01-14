@@ -4,15 +4,18 @@ import { Canvas } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
-import { AnimatePresence, motion } from 'framer-motion'; // Animation library
+import { AnimatePresence, motion } from 'framer-motion'; 
+
+// --- IMPORTS ---
 import Navbar from './components/common/Navbar';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import Cart from './pages/Cart';
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
-import Deals from './pages/Deals';     // Import
-import Delivery from './pages/Delivery'; // Import
+import Deals from './pages/Deals';     
+import Delivery from './pages/Delivery'; 
+import InstallButton from './components/common/InstallButton'; // <--- NEW IMPORT
 
 // 1. The Fixed Background (Stars)
 function StarBackground() {
@@ -25,7 +28,6 @@ function StarBackground() {
   );
 }
 
-// 2. The Diamond Page Transition
 // 2. The Diamond Page Transition (FAST VERSION)
 const PageWrapper = ({ children }) => {
   return (
@@ -33,7 +35,6 @@ const PageWrapper = ({ children }) => {
       initial={{ opacity: 0, clipPath: 'polygon(50% 0, 50% 0, 50% 100%, 50% 100%)' }}
       animate={{ opacity: 1, clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }}
       exit={{ opacity: 0, clipPath: 'polygon(50% 0, 50% 0, 50% 100%, 50% 100%)' }}
-      // WAS: duration: 0.8 -> NOW: duration: 0.4 (2x Faster)
       transition={{ duration: 0.4, ease: "easeInOut" }}
       className="relative z-10"
     >
@@ -55,7 +56,7 @@ function AnimatedRoutes() {
         <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
         <Route path="/admin" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
         <Route path="/deals" element={<PageWrapper><Deals /></PageWrapper>} />
-<Route path="/delivery" element={<PageWrapper><Delivery /></PageWrapper>} />
+        <Route path="/delivery" element={<PageWrapper><Delivery /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );
@@ -70,6 +71,8 @@ function App() {
           <StarBackground />
           
           <Navbar />
+          <InstallButton /> {/* <--- ADDED HERE: Available on all pages */}
+          
           <Toaster position="bottom-right" toastOptions={{ style: { background: '#1a1a1a', color: '#fff' }}} />
           
           {/* Routes handle the transitions */}
