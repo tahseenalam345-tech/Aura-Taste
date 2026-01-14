@@ -1,20 +1,10 @@
-html, body {
-  overflow-x: hidden;
-  overflow-y: auto; /* Force scroll to work */
-  touch-action: pan-y; /* Enable mobile swipe */
-  -webkit-overflow-scrolling: touch; /* Smooth scroll on iPhone */
-}
-
-/* Ensure the background stays behind everything */
-#root {
-  min-height: 100vh;
-  position: relative;
-  z-index: 1;
-}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ===============================
+   Tailwind Base Customizations
+================================ */
 @layer base {
   body {
     /* Apply the Void background and new UI font globally */
@@ -23,18 +13,21 @@ html, body {
     min-height: 100vh;
   }
 
-  /* Target all headings to use the new Serif font */
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif tracking-tight;
   }
 }
+
+/* ===============================
+   Global Enhancements
+================================ */
 
 /* Smooth Scrolling */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom Scrollbar to match the dark theme */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -47,4 +40,27 @@ html {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #FFD700;
+}
+
+/* ===============================
+   FORCE MOBILE SCROLL FIX
+================================ */
+html,
+body {
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+  z-index: 10;
+}
+
+/* Make sure the stars never block touch */
+canvas {
+  pointer-events: none !important;
+  z-index: -1 !important;
 }
