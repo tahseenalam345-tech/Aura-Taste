@@ -2,74 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===============================
-   Tailwind Base Customizations
-================================ */
 @layer base {
   body {
-    /* Changed: Removed overflow-x-hidden from here to avoid locking */
     @apply bg-dark text-white font-sans;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
     min-height: 100vh;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-serif tracking-tight;
+    overflow-x: hidden; /* No side scroll */
+    overflow-y: scroll; /* Force vertical scroll */
   }
 }
 
-/* ===============================
-   Global Scroll Fixes
-================================ */
-
-html {
-  scroll-behavior: smooth;
-  height: 100%; /* Important for mobile */
+/* --- THE SCROLL FIX --- */
+html, body {
+  height: auto !important;
+  min-height: 100% !important;
+  touch-action: pan-y !important; /* Enable swipe */
+  -webkit-overflow-scrolling: touch;
 }
 
-body {
-  height: 100%; /* Important for mobile */
-  overflow-x: hidden; /* Prevent side scroll */
-  overflow-y: auto; /* Allow vertical scroll */
-  -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
-}
-
-/* ===============================
-   ROOT CONTAINER FIX (Crucial)
-================================ */
 #root {
-  /* This allows the app to grow taller than the screen */
-  min-height: 100vh; 
-  height: auto; 
+  min-height: 100vh;
   position: relative;
   z-index: 10;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ===============================
-   3D Background Fix
-================================ */
-/* Ensures the stars NEVER block your finger swipe */
+/* Push Stars to background */
 canvas {
-  pointer-events: none !important;
-  touch-action: none !important;
   position: fixed !important;
   top: 0;
   left: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: -1 !important;
-}
-
-/* Custom Scrollbar (Desktop only) */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #050505;
-}
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #FFD700;
+  pointer-events: none !important; /* Touch goes THROUGH stars */
 }

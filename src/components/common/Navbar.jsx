@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiShoppingBag, FiUser, FiMenu, FiX } from 'react-icons/fi';
+import { FiShoppingBag, FiUser, FiMenu, FiX, FiBell } from 'react-icons/fi';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 
-// 🔔 LOUD NOTIFICATION SOUND
+// 🔔 Notification Sound
 const ALERT_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export default function Navbar() {
@@ -17,9 +17,11 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const audioRef = useRef(new Audio(ALERT_SOUND));
-  const isFirstLoad = useRef(true); // Prevent sound on page refresh
   const location = useLocation();
+  
+  // Audio Refs
+  const audioRef = useRef(new Audio(ALERT_SOUND));
+  const isFirstRun = useRef(true);
 
   const ADMIN_EMAIL = "tahseenalam345@gmail.com";
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -31,52 +33,42 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // --- 🔔 REAL-TIME NOTIFICATION SYSTEM ---
+  // --- NOTIFICATION LOGIC ---
   useEffect(() => {
     if (isAdmin) {
-      // 1. Ask Browser for Permission to show System Popups
-      if (Notification.permission !== "granted") {
-        Notification.requestPermission();
-      }
-
-      // 2. Listen for Pending Orders
       const q = query(collection(db, "orders"), where("status", "==", "Pending"));
       
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        const count = snapshot.size;
-        setPendingCount(count);
+        setPendingCount(snapshot.size);
 
-        // Check if a NEW order came in (by looking at changes)
+        // Check for NEW orders (ignore first load)
         snapshot.docChanges().forEach((change) => {
-          if (change.type === "added" && !isFirstLoad.current) {
+          if (change.type === "added" && !isFirstRun.current) {
+            // 1. Play Sound
+            audioRef.current.play().catch(e => console.log("Audio blocked: Click bell icon to enable"));
             
-            // A. Play Sound
-            audioRef.current.play().catch(e => console.log("Click page to enable audio"));
-            
-            // B. Show Screen Popup
+            // 2. Show Toast
             toast("🔥 NEW ORDER RECEIVED!", {
                icon: '🔔',
                style: { background: '#FFD700', color: '#000', fontWeight: 'bold' },
                duration: 6000
             });
-
-            // C. Show System/Phone Notification (Works if tab is hidden)
-            if (Notification.permission === "granted") {
-              new Notification("New Order @ Aura Taste", {
-                body: "A customer just placed an order! Check Admin Panel.",
-                icon: "/pwa-192x192.png"
-              });
-            }
           }
         });
-
-        // After first run, disable the "First Load" flag so future orders make sound
-        isFirstLoad.current = false;
+        isFirstRun.current = false;
       });
-
       return () => unsubscribe();
     }
   }, [isAdmin]);
+
+  // Manual Audio Enable (Browsers block auto-audio)
+  const enableAudio = () => {
+    audioRef.current.play().then(() => {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      toast.success("Notifications Enabled! 🔔");
+    }).catch(() => toast.error("Could not enable audio"));
+  };
 
   const isActive = (path) => location.pathname === path;
   const navLinks = [
@@ -107,14 +99,18 @@ export default function Navbar() {
           ))}
           
           {isAdmin && (
-             <Link to="/admin" className={`relative text-xs font-bold tracking-[2px] transition-colors uppercase ${isActive('/admin') ? 'text-primary' : 'text-red-500 hover:text-white'}`}>
-               ADMIN
-               {pendingCount > 0 && (
-                 <span className="absolute -top-3 -right-4 w-5 h-5 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border border-dark shadow-[0_0_10px_#ff0000]">
-                   {pendingCount}
-                 </span>
-               )}
-             </Link>
+             <div className="flex items-center gap-4">
+               <Link to="/admin" className="relative text-xs font-bold tracking-[2px] text-red-500 hover:text-white uppercase">
+                 ADMIN
+                 {pendingCount > 0 && (
+                   <span className="absolute -top-3 -right-4 w-5 h-5 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border border-dark">
+                     {pendingCount}
+                   </span>
+                 )}
+               </Link>
+               {/* ENABLE SOUND BUTTON */}
+               <button onClick={enableAudio} title="Enable Sound" className="text-gray-400 hover:text-primary"><FiBell /></button>
+             </div>
           )}
           
           {!isAdmin && user && (
@@ -122,14 +118,14 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* ICONS */}
+        {/* ICONS & MOBILE HAMBURGER */}
         <div className="flex items-center gap-4 z-50">
           {user ? (
             <div onClick={logout} className="cursor-pointer relative group">
                {user.photoURL ? (
-                 <img src={user.photoURL} className="w-8 h-8 rounded-full border border-gray-600 group-hover:border-primary object-cover" />
+                 <img src={user.photoURL} className="w-8 h-8 rounded-full border border-gray-600 object-cover" />
                ) : (
-                 <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border border-gray-600 group-hover:border-primary">
+                 <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border border-gray-600">
                     <FiUser className="text-white text-xl" />
                  </div>
                )}
@@ -146,26 +142,30 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-white text-2xl">
+          {/* --- THE BURGER BUTTON (Visible on Mobile) --- */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+            className="md:hidden text-white text-2xl z-50 p-2"
+          >
             {mobileMenuOpen ? <FiX /> : <FiMenu />}
           </button>
         </div>
       </div>
 
-      {/* MOBILE MENU */}
+      {/* MOBILE MENU DROPDOWN */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="absolute top-full left-0 w-full bg-black/95 backdrop-blur-xl border-t border-white/10 md:hidden flex flex-col p-6 gap-4 shadow-2xl h-screen"
+            className="absolute top-0 left-0 w-full h-screen bg-black/95 backdrop-blur-xl flex flex-col justify-center items-center gap-8 z-40"
           >
             {navLinks.map(link => (
-              <Link key={link.name} to={link.path} onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold tracking-widest text-white hover:text-primary uppercase border-b border-white/10 pb-4">
+              <Link key={link.name} to={link.path} onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold tracking-widest text-white hover:text-primary uppercase">
                 {link.name}
               </Link>
             ))}
-            {isAdmin && <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-red-500 uppercase">ADMIN PANEL ({pendingCount})</Link>}
-            {!isAdmin && user && <Link to="/delivery" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-primary uppercase">ORDER STATUS</Link>}
+            {isAdmin && <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold text-red-500 uppercase">ADMIN PANEL ({pendingCount})</Link>}
+            {!isAdmin && user && <Link to="/delivery" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold text-primary uppercase">ORDER STATUS</Link>}
           </motion.div>
         )}
       </AnimatePresence>
