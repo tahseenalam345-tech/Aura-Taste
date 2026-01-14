@@ -19,9 +19,12 @@ import Delivery from './pages/Delivery';
 import InstallButton from './components/common/InstallButton'; // <--- NEW IMPORT
 
 // 1. The Fixed Background (Stars)
+// In src/App.jsx
+
 function StarBackground() {
   return (
-    <div className="fixed inset-0 z-0 bg-dark pointer-events-none">
+    // CHANGE z-0 TO z-[-1] HERE:
+    <div className="fixed inset-0 z-[-1] pointer-events-none bg-dark">
       <Canvas camera={{ position: [0, 0, 1] }}>
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
       </Canvas>

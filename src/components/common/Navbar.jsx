@@ -15,7 +15,10 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
+  // ⚠️ IMPORTANT: MAKE SURE THIS MATCHES YOUR LOGIN EMAIL EXACTLY
   const ADMIN_EMAIL = "tahseenalam345@gmail.com";
+  
+  // Robust check: ignores capital letters
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   useEffect(() => {
@@ -24,27 +27,33 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // --- REALTIME BADGE LISTENER ---
   useEffect(() => {
+    // Only listen if we are the Admin
     if (isAdmin) {
       const q = query(collection(db, "orders"), where("status", "==", "Pending"));
-      const unsubscribe = onSnapshot(q, (snapshot) => setPendingCount(snapshot.size));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setPendingCount(snapshot.size);
+        console.log("Pending Orders Found:", snapshot.size); // Check Console
+      });
       return () => unsubscribe();
     }
   }, [user, isAdmin]);
 
   const isActive = (path) => location.pathname === path;
+  
   const navLinks = [
     { name: 'HOME', path: '/' },
     { name: 'MENU', path: '/menu' },
     { name: 'DEALS', path: '/deals' },
-    { name: 'MAKE DEAL', path: '/make-deal' }, // New Page Link
+    { name: 'MAKE DEAL', path: '/make-deal' },
   ];
 
   return (
     <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-dark/95 backdrop-blur-md py-4' : 'bg-transparent py-6'}`}>
       <div className="container mx-auto px-6 flex justify-between items-center">
         
-        {/* Logo */}
+        {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 z-50">
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-dark">
             <span className="font-serif font-bold text-lg">A</span>
@@ -52,7 +61,7 @@ export default function Navbar() {
           <span className="text-2xl font-bold tracking-widest text-white font-sans uppercase">AURA</span>
         </Link>
 
-        {/* Desktop Menu */}
+        {/* DESKTOP LINKS */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map(link => (
             <Link key={link.name} to={link.path} className={`text-xs font-bold tracking-[2px] transition-colors uppercase ${isActive(link.path) ? 'text-primary' : 'text-gray-400 hover:text-white'}`}>
@@ -60,10 +69,16 @@ export default function Navbar() {
             </Link>
           ))}
           
+          {/* ADMIN LINK WITH BADGE */}
           {isAdmin && (
              <Link to="/admin" className={`relative text-xs font-bold tracking-[2px] transition-colors uppercase ${isActive('/admin') ? 'text-primary' : 'text-red-500 hover:text-white'}`}>
                ADMIN
-               {pendingCount > 0 && <span className="absolute -top-3 -right-4 w-4 h-4 bg-red-600 text-white text-[9px] flex items-center justify-center rounded-full animate-pulse">{pendingCount}</span>}
+               {/* RED BADGE */}
+               {pendingCount > 0 && (
+                 <span className="absolute -top-3 -right-4 w-5 h-5 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border border-dark">
+                   {pendingCount}
+                 </span>
+               )}
              </Link>
           )}
           
@@ -72,45 +87,59 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Right Icons & Mobile Toggle */}
+        {/* ICONS & MOBILE MENU BUTTON */}
         <div className="flex items-center gap-4 z-50">
           {user ? (
-            <div onClick={logout} className="cursor-pointer relative">
-               {user.photoURL ? <img src={user.photoURL} className="w-8 h-8 rounded-full border border-gray-600" /> : <FiUser className="text-white text-xl" />}
+            <div onClick={logout} className="cursor-pointer relative group">
+               {user.photoURL ? (
+                 <img src={user.photoURL} className="w-8 h-8 rounded-full border border-gray-600 group-hover:border-primary object-cover" />
+               ) : (
+                 <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border border-gray-600 group-hover:border-primary">
+                    <FiUser className="text-white text-xl" />
+                 </div>
+               )}
+               {/* Green Dot = Admin Online */}
                {isAdmin && <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-black"></span>}
             </div>
           ) : (
-            <Link to="/login" className="text-xs font-bold text-white uppercase">Login</Link>
+            <Link to="/login" className="text-xs font-bold text-white uppercase hover:text-primary">Login</Link>
           )}
 
           <Link to="/cart" className="relative">
-            <FiShoppingBag className="text-xl text-white" />
+            <FiShoppingBag className="text-xl text-white hover:text-primary transition-colors" />
             <span className="absolute -top-2 -right-2 w-4 h-4 bg-primary text-dark text-[10px] font-bold flex items-center justify-center rounded-full">
               {cart.reduce((acc, item) => acc + item.qty, 0)}
             </span>
           </Link>
 
-          {/* Mobile Hamburger */}
+          {/* HAMBURGER BUTTON (Mobile Only) */}
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-white text-2xl">
             {mobileMenuOpen ? <FiX /> : <FiMenu />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Dropdown Menu */}
+      {/* MOBILE DROPDOWN MENU */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="absolute top-full left-0 w-full bg-black/95 backdrop-blur-xl border-t border-white/10 md:hidden flex flex-col p-6 gap-4 shadow-2xl"
+            className="absolute top-full left-0 w-full bg-black/95 backdrop-blur-xl border-t border-white/10 md:hidden flex flex-col p-6 gap-4 shadow-2xl h-screen"
           >
             {navLinks.map(link => (
-              <Link key={link.name} to={link.path} onClick={() => setMobileMenuOpen(false)} className="text-sm font-bold tracking-widest text-white hover:text-primary uppercase border-b border-white/10 pb-2">
+              <Link key={link.name} to={link.path} onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold tracking-widest text-white hover:text-primary uppercase border-b border-white/10 pb-4">
                 {link.name}
               </Link>
             ))}
-            {isAdmin && <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-sm font-bold text-red-500 uppercase">ADMIN PANEL</Link>}
-            {!isAdmin && user && <Link to="/delivery" onClick={() => setMobileMenuOpen(false)} className="text-sm font-bold text-primary uppercase">ORDER STATUS</Link>}
+            {isAdmin && (
+              <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-red-500 uppercase flex justify-between items-center">
+                ADMIN PANEL
+                {pendingCount > 0 && <span className="bg-red-600 text-white px-2 py-1 rounded-full text-xs">{pendingCount} New</span>}
+              </Link>
+            )}
+            {!isAdmin && user && (
+              <Link to="/delivery" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-primary uppercase">ORDER STATUS</Link>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
