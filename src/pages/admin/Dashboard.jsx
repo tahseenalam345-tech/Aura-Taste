@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, deleteDoc, addDoc, doc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
-import { FiBox, FiTrash2, FiEdit2, FiUpload, FiPlus, FiGrid, FiType, FiDollarSign, FiZap } from 'react-icons/fi';
+import { FiBox, FiTrash2, FiEdit2, FiUpload, FiPlus, FiPrinter, FiDownload, FiZap } from 'react-icons/fi';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('orders'); 
@@ -29,58 +29,58 @@ export default function AdminDashboard() {
     toast.success("Updated");
   };
 
-  // --- 2. MAGIC BUTTON (Correct Dummy Images) ---
-  const generateDummyData = async () => {
-    if (!window.confirm("⚠️ Add dummy items with correct images?")) return;
-    
-    const batch = writeBatch(db);
-    const categories = [
-      { name: "Burgers", items: ["Beef Smash", "Chicken Zinger", "Jalapeno Spark"], img: "https://cdn-icons-png.flaticon.com/512/3075/3075977.png" },
-      { name: "Pizza", items: ["Chicken Fajita", "Beef Peperoni", "Cheesy Lover"], img: "https://cdn-icons-png.flaticon.com/512/1404/1404945.png" },
-      { name: "Wrapster", items: ["Zinger Wrap", "BBQ Wrap", "Veggie Roll"], img: "https://cdn-icons-png.flaticon.com/512/1230/1230692.png" },
-      { name: "Crispy Chicken", items: ["2pc Fried", "Bucket (9pc)", "Spicy Shots"], img: "https://cdn-icons-png.flaticon.com/512/931/931898.png" },
-      { name: "Fries", items: ["Plain Fries", "Loaded Mayo", "Pizza Fries"], img: "https://cdn-icons-png.flaticon.com/512/104/104678.png" },
-      { name: "Twister", items: ["Classic Twister", "Texan Twist", "Mayo Twist"], img: "https://cdn-icons-png.flaticon.com/512/1230/1230692.png" },
-      { name: "Shawarma", items: ["Chicken Shawarma", "Platter", "Arabian Roll"], img: "https://cdn-icons-png.flaticon.com/512/5223/5223078.png" },
-      { name: "Nuggets", items: ["6 Nuggets", "20 Nuggets", "Tempura Nuggets"], img: "https://cdn-icons-png.flaticon.com/512/6202/6202029.png" },
-      { name: "Wings", items: ["BBQ Wings", "Honey Mustard", "Flaming Wings"], img: "https://cdn-icons-png.flaticon.com/512/6108/6108470.png" },
-      { name: "Desserts", items: ["Choco Lava", "Ice Cream Cup", "Brownie"], img: "https://cdn-icons-png.flaticon.com/512/3081/3081949.png" },
-      { name: "Beverages", items: ["Pepsi", "7Up", "Dew"], img: "https://cdn-icons-png.flaticon.com/512/2405/2405597.png" }
-    ];
+  // --- RECEIPT LOGIC ---
+  const generateReceipt = (order, type) => {
+    const receiptContent = `
+      <html>
+        <head>
+          <title>Receipt #${order.id.slice(-5)}</title>
+          <style>
+            body { font-family: monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+            .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            .total { border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-weight: bold; text-align: right; }
+            .footer { margin-top: 20px; text-align: center; font-size: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>AURA TASTE</h2>
+            <p>Order #${order.id.slice(-5).toUpperCase()}</p>
+            <p>${new Date(order.createdAt?.seconds * 1000).toLocaleString()}</p>
+          </div>
+          <div>
+            <p><strong>Customer:</strong> ${order.customer?.name}</p>
+            <p><strong>Phone:</strong> ${order.customer?.phone}</p>
+            <p><strong>Address:</strong> ${order.customer?.address}</p>
+          </div>
+          <hr/>
+          ${order.items.map(item => `
+            <div class="item">
+              <span>${item.qty}x ${item.name} <br/><small>${item.selectedSize || ''}</small></span>
+              <span>${item.price * item.qty}</span>
+            </div>
+          `).join('')}
+          <div class="total">
+            TOTAL: Rs. ${order.totalAmount}
+          </div>
+          <div class="footer">Thank you for dining with Aura!</div>
+        </body>
+      </html>
+    `;
 
-    categories.forEach(cat => {
-      cat.items.forEach(itemName => {
-        const newRef = doc(collection(db, "products"));
-        let sizes = [];
-        let extras = [{ name: "Extra Cheese", price: 50 }];
-        
-        // Custom Logic per Category
-        if(cat.name === "Pizza") {
-           sizes = [{ name: "Small", price: 500 }, { name: "Medium", price: 1200 }, { name: "Large", price: 1800 }, { name: "Party", price: 2500 }];
-        } else if (cat.name === "Beverages") {
-           sizes = [{ name: "Regular", price: 100 }, { name: "Large", price: 150 }];
-           extras = []; 
-        }
-
-        batch.set(newRef, {
-          name: itemName,
-          category: cat.name,
-          basePrice: 350,
-          description: `Delicious ${itemName} made fresh.`,
-          image: cat.img, // <--- USES CORRECT IMAGE NOW
-          sizes: sizes,
-          extras: extras,
-          tag: 'None',
-          createdAt: new Date()
-        });
-      });
-    });
-
-    try {
-      await batch.commit();
-      toast.success("Dummy Menu Created with Images!");
-    } catch(e) {
-      toast.error("Error creating data");
+    if (type === 'print') {
+      const win = window.open('', '', 'width=400,height=600');
+      win.document.write(receiptContent);
+      win.document.close();
+      win.print();
+    } else {
+      const blob = new Blob([receiptContent], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Receipt-${order.id.slice(-5)}.html`;
+      a.click();
     }
   };
 
@@ -98,17 +98,21 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-4">
           {orders.length === 0 && <div className="text-gray-500">No active orders found.</div>}
           {orders.map(order => (
-            <div key={order.id} className="bg-white/5 border border-white/10 p-4 md:p-6 rounded-xl flex flex-col lg:flex-row gap-6 justify-between items-start">
-              <div className="min-w-[200px]">
-                <h3 className="text-xl font-bold text-primary mb-1">#{order.id.slice(-5).toUpperCase()}</h3>
-                <p className="text-xs text-gray-400 mb-2">{new Date(order.createdAt?.seconds * 1000).toLocaleString()}</p>
-                <div className="text-sm text-gray-300">
-                  <p><strong>{order.customer?.name || "Guest"}</strong></p>
-                  <p>{order.customer?.phone}</p>
-                  <p>{order.customer?.address}</p>
+            <div key={order.id} className="bg-white/5 border border-white/10 p-4 md:p-6 rounded-xl flex flex-col xl:flex-row gap-6 justify-between items-start">
+              
+              {/* 1. CUSTOMER DETAILS */}
+              <div className="min-w-[250px] space-y-1">
+                <h3 className="text-xl font-bold text-primary mb-2">#{order.id.slice(-5).toUpperCase()}</h3>
+                <p className="text-xs text-gray-400">{new Date(order.createdAt?.seconds * 1000).toLocaleString()}</p>
+                <div className="bg-black/30 p-3 rounded mt-2 text-sm border border-white/5">
+                  <p><span className="text-gray-500">Name:</span> <strong>{order.customer?.name || "Guest"}</strong></p>
+                  <p><span className="text-gray-500">Email:</span> {order.customer?.email || "N/A"}</p>
+                  <p><span className="text-gray-500">Phone:</span> {order.customer?.phone || "N/A"}</p>
+                  <p><span className="text-gray-500">Addr:</span> {order.customer?.address || "Pickup"}</p>
                 </div>
               </div>
 
+              {/* 2. ORDER ITEMS */}
               <div className="flex-1 bg-black/20 p-4 rounded-lg w-full">
                 {order.items?.map((item, idx) => (
                   <div key={idx} className="flex justify-between border-b border-white/5 pb-2 mb-2 text-sm md:text-base">
@@ -117,9 +121,16 @@ export default function AdminDashboard() {
                   </div>
                 ))}
                 <div className="text-right font-bold text-lg mt-2 text-primary">Total: Rs. {order.totalAmount}</div>
+                
+                {/* RECEIPT BUTTONS */}
+                <div className="flex gap-2 justify-end mt-4 pt-4 border-t border-white/10">
+                   <button onClick={() => generateReceipt(order, 'print')} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded text-sm"><FiPrinter/> Print</button>
+                   <button onClick={() => generateReceipt(order, 'download')} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded text-sm"><FiDownload/> Download</button>
+                </div>
               </div>
 
-              <div className="w-full lg:w-[200px]">
+              {/* 3. STATUS */}
+              <div className="w-full xl:w-[200px]">
                  <select value={order.status || 'Pending'} onChange={(e) => handleStatusUpdate(order.id, e.target.value)} className="w-full bg-black border border-primary rounded p-3 text-white font-bold">
                   {['Pending', 'Approved', 'In Kitchen', 'Finishing', 'Delivering', 'Completed'].map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -130,19 +141,19 @@ export default function AdminDashboard() {
       )}
 
       {/* === MENU VIEW === */}
-      {activeTab === 'menu' && (
-        <>
-           <button onClick={generateDummyData} className="mb-8 w-full md:w-auto bg-green-800 text-white px-6 py-3 rounded font-bold flex gap-2 items-center justify-center"><FiZap/> Add Dummy Items (Auto-Images)</button>
-           <AddItemForm products={products} />
-        </>
-      )}
+      {activeTab === 'menu' && <AddItemForm products={products} />}
     </div>
   );
 }
 
-// --- ADD ITEM FORM ---
+// ... AddItemForm component remains the same as previous (Dark theme, Image upload, etc.)
+// (Paste the AddItemForm from the previous message here if you need the full file combined, 
+//  but typically I assume you keep the bottom half I sent previously).
 function AddItemForm({ products }) {
-  const initial = { 
+  // ... (Same as previous "Dark Box" code) ...
+  // To save space in this response, use the AddItemForm from the PREVIOUS message.
+  // It is perfectly compatible.
+   const initial = { 
     name: '', category: 'Burgers', basePrice: '', sizes: [], extras: [], image: '', 
     description: '', tag: 'None', customFields: [] 
   };
@@ -156,7 +167,6 @@ function AddItemForm({ products }) {
   const [customType, setCustomType] = useState('text');
   const [tempCustom, setTempCustom] = useState({ label: '', value: '', image: '' });
 
-  // 1. GENERIC IMAGE UPLOAD FUNCTION
   const handleImageUpload = (e, callback) => {
     const file = e.target.files[0];
     if (file) {
@@ -203,142 +213,33 @@ function AddItemForm({ products }) {
         <h2 className="text-xl md:text-2xl font-bold text-yellow-400 mb-6">{isEditing ? 'Edit Item' : 'Add New Item'}</h2>
         
         <div className="space-y-5">
-          {/* Name */}
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Name</label>
-            <input className="w-full bg-[#222] border border-white/10 rounded p-3 text-white focus:border-yellow-400 outline-none" value={item.name} onChange={e => setItem({...item, name: e.target.value})} />
-          </div>
+          <div><label className="text-xs text-gray-500 mb-1 block">Name</label><input className="w-full bg-[#222] border border-white/10 rounded p-3 text-white focus:border-yellow-400 outline-none" value={item.name} onChange={e => setItem({...item, name: e.target.value})} /></div>
 
           <div className="flex flex-col md:flex-row gap-4">
-             <div className="w-full md:w-1/2">
-                <label className="text-xs text-gray-500 mb-1 block">Category</label>
-                <select className="w-full bg-[#222] border border-white/10 rounded p-3 text-white outline-none" value={item.category} onChange={e => setItem({...item, category: e.target.value, sizes: []})}>
-                   {['Burgers', 'Pizza', 'Wrapster', 'Crispy Chicken', 'Fries', 'Twister', 'Shawarma', 'Nuggets', 'Wings', 'Desserts', 'Beverages'].map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-             </div>
-             <div className="w-full md:w-1/2">
-                <label className="text-xs text-gray-500 mb-1 block">Base Price</label>
-                <input type="number" className="w-full bg-[#222] border border-white/10 rounded p-3 text-white outline-none" value={item.basePrice} onChange={e => setItem({...item, basePrice: e.target.value})} />
-             </div>
+             <div className="w-full md:w-1/2"><label className="text-xs text-gray-500 mb-1 block">Category</label><select className="w-full bg-[#222] border border-white/10 rounded p-3 text-white outline-none" value={item.category} onChange={e => setItem({...item, category: e.target.value, sizes: []})}>{['Burgers', 'Pizza', 'Wrapster', 'Crispy Chicken', 'Fries', 'Twister', 'Shawarma', 'Nuggets', 'Wings', 'Desserts', 'Beverages'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+             <div className="w-full md:w-1/2"><label className="text-xs text-gray-500 mb-1 block">Base Price</label><input type="number" className="w-full bg-[#222] border border-white/10 rounded p-3 text-white outline-none" value={item.basePrice} onChange={e => setItem({...item, basePrice: e.target.value})} /></div>
           </div>
 
-          {/* MAIN IMAGE UPLOAD (FOR THE ITEM ITSELF) */}
-          <div>
-             <label className="text-xs text-gray-500 mb-1 block">Main Image</label>
-             <div className="flex gap-2">
-               <input className="flex-1 bg-[#222] border border-white/10 rounded p-3 text-white text-sm outline-none" placeholder="Paste URL or Upload ->" value={item.image} onChange={e => setItem({...item, image: e.target.value})} />
-               <label className="bg-white/10 px-4 flex items-center justify-center rounded cursor-pointer hover:bg-white/20">
-                 <FiUpload className="mr-2"/> Upload
-                 <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, (url) => setItem({...item, image: url}))}/>
-               </label>
-             </div>
-             {item.image && <img src={item.image} className="w-20 h-20 mt-2 rounded object-cover border border-white/20" />}
-          </div>
+          <div><label className="text-xs text-gray-500 mb-1 block">Main Image</label><div className="flex gap-2"><input className="flex-1 bg-[#222] border border-white/10 rounded p-3 text-white text-sm outline-none" placeholder="Paste URL or Upload ->" value={item.image} onChange={e => setItem({...item, image: e.target.value})} /><label className="bg-white/10 px-4 flex items-center justify-center rounded cursor-pointer hover:bg-white/20"><FiUpload /><input type="file" className="hidden" onChange={(e) => handleImageUpload(e, (url) => setItem({...item, image: url}))}/></label></div>{item.image && <img src={item.image} className="w-16 h-16 mt-2 rounded object-cover border border-white/20" />}</div>
 
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Ingredients / Description</label>
-            <textarea className="w-full bg-[#222] border border-white/10 rounded p-3 text-white h-20 outline-none" value={item.description} onChange={e => setItem({...item, description: e.target.value})} />
-          </div>
+          <div><label className="text-xs text-gray-500 mb-1 block">Ingredients / Description</label><textarea className="w-full bg-[#222] border border-white/10 rounded p-3 text-white h-20 outline-none" value={item.description} onChange={e => setItem({...item, description: e.target.value})} /></div>
 
-          {/* SIZES */}
           {(item.category === 'Pizza' || item.category === 'Beverages') && (
-            <div className="bg-[#1a1a1a] p-3 md:p-4 rounded border border-white/5">
-              <label className="text-xs font-bold text-yellow-400 uppercase block mb-2">Sizes</label>
-              <div className="flex gap-2 mb-2">
-                <input placeholder="Size (Small)" className="bg-[#222] text-white p-2 rounded w-1/2 text-sm" value={tempSize.name} onChange={e => setTempSize({...tempSize, name: e.target.value})} />
-                <input placeholder="Price" className="bg-[#222] text-white p-2 rounded w-1/3 text-sm" value={tempSize.price} onChange={e => setTempSize({...tempSize, price: e.target.value})} />
-                <button onClick={() => { setItem({...item, sizes: [...item.sizes, { ...tempSize, price: parseFloat(tempSize.price)}]}); setTempSize({name:'', price:''}) }} className="bg-yellow-400 text-black px-3 rounded font-bold">+</button>
-              </div>
-              <div className="flex flex-wrap gap-2">{item.sizes.map((s, i) => <span key={i} className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">{s.name}: {s.price}</span>)}</div>
-            </div>
+            <div className="bg-[#1a1a1a] p-3 md:p-4 rounded border border-white/5"><label className="text-xs font-bold text-yellow-400 uppercase block mb-2">Sizes</label><div className="flex gap-2 mb-2"><input placeholder="Size (Small)" className="bg-[#222] text-white p-2 rounded w-1/2 text-sm" value={tempSize.name} onChange={e => setTempSize({...tempSize, name: e.target.value})} /><input placeholder="Price" className="bg-[#222] text-white p-2 rounded w-1/3 text-sm" value={tempSize.price} onChange={e => setTempSize({...tempSize, price: e.target.value})} /><button onClick={() => { setItem({...item, sizes: [...item.sizes, { ...tempSize, price: parseFloat(tempSize.price)}]}); setTempSize({name:'', price:''}) }} className="bg-yellow-400 text-black px-3 rounded font-bold">+</button></div><div className="flex flex-wrap gap-2">{item.sizes.map((s, i) => <span key={i} className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">{s.name}: {s.price}</span>)}</div></div>
           )}
 
-          {/* EXTRAS (With Image Upload) */}
-          <div className="bg-[#1a1a1a] p-3 md:p-4 rounded border border-white/5">
-             <label className="text-xs font-bold text-orange-500 uppercase block mb-2">Extra Toppings</label>
-              <div className="flex flex-col gap-2 mb-2">
-                <div className="flex gap-2">
-                  <input placeholder="Name (Cheese)" className="bg-[#222] text-white p-2 rounded w-1/2 text-sm" value={tempExtra.name} onChange={e => setTempExtra({...tempExtra, name: e.target.value})} />
-                  <input placeholder="Price" className="bg-[#222] text-white p-2 rounded w-1/2 text-sm" value={tempExtra.price} onChange={e => setTempExtra({...tempExtra, price: e.target.value})} />
-                </div>
-                <div className="flex gap-2">
-                   <label className="flex-1 bg-white/5 p-2 rounded text-xs text-gray-400 cursor-pointer flex items-center justify-center gap-2 border border-white/10 hover:bg-white/10">
-                     <FiUpload /> {tempExtra.image ? "Image Loaded" : "Upload Top Image"}
-                     <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, (url) => setTempExtra({...tempExtra, image: url}))} />
-                   </label>
-                   <button onClick={() => { setItem({...item, extras: [...item.extras, { ...tempExtra, price: parseFloat(tempExtra.price)}]}); setTempExtra({name:'', price:'', image: ''}) }} className="bg-yellow-400 text-black px-4 rounded font-bold">Add</button>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {item.extras.map((s, i) => (
-                  <span key={i} className="text-xs bg-orange-900 text-orange-200 px-2 py-1 rounded flex items-center gap-1">
-                    {s.image && <img src={s.image} className="w-4 h-4 rounded-full"/>}
-                    {s.name}: {s.price}
-                  </span>
-                ))}
-              </div>
-          </div>
+          <div className="bg-[#1a1a1a] p-3 md:p-4 rounded border border-white/5"><label className="text-xs font-bold text-orange-500 uppercase block mb-2">Extra Toppings</label><div className="flex flex-col gap-2 mb-2"><div className="flex gap-2"><input placeholder="Name (Cheese)" className="bg-[#222] text-white p-2 rounded w-1/2 text-sm" value={tempExtra.name} onChange={e => setTempExtra({...tempExtra, name: e.target.value})} /><input placeholder="Price" className="bg-[#222] text-white p-2 rounded w-1/2 text-sm" value={tempExtra.price} onChange={e => setTempExtra({...tempExtra, price: e.target.value})} /></div><div className="flex gap-2"><label className="flex-1 bg-white/5 p-2 rounded text-xs text-gray-400 cursor-pointer flex items-center justify-center gap-2 border border-white/10 hover:bg-white/10"><FiUpload /> {tempExtra.image ? "Image Loaded" : "Upload Top Image"}<input type="file" className="hidden" onChange={(e) => handleImageUpload(e, (url) => setTempExtra({...tempExtra, image: url}))} /></label><button onClick={() => { setItem({...item, extras: [...item.extras, { ...tempExtra, price: parseFloat(tempExtra.price)}]}); setTempExtra({name:'', price:'', image: ''}) }} className="bg-yellow-400 text-black px-4 rounded font-bold">Add</button></div></div><div className="flex flex-wrap gap-2">{item.extras.map((s, i) => <span key={i} className="text-xs bg-orange-900 text-orange-200 px-2 py-1 rounded flex items-center gap-1">{s.image && <img src={s.image} className="w-4 h-4 rounded-full"/>}{s.name}: {s.price}</span>)}</div></div>
 
-          {/* CUSTOM BOX (With Image Upload) */}
-          <div className="bg-[#1a1a1a] p-3 md:p-4 rounded border border-yellow-400/30">
-             <label className="text-xs font-bold text-yellow-400 uppercase block mb-2">Add Custom Box</label>
-             <div className="flex gap-2 mb-2">
-               <select className="bg-[#222] text-white p-2 rounded text-sm w-1/3" value={customType} onChange={e => setCustomType(e.target.value)}>
-                 <option value="text">Text Info</option>
-                 <option value="number">Price Adder</option>
-               </select>
-               <input placeholder="Label" className="bg-[#222] text-white p-2 rounded text-sm w-1/3" value={tempCustom.label} onChange={e => setTempCustom({...tempCustom, label: e.target.value})} />
-               <input placeholder="Value" className="bg-[#222] text-white p-2 rounded text-sm w-1/3" value={tempCustom.value} onChange={e => setTempCustom({...tempCustom, value: e.target.value})} />
-             </div>
-             <div className="flex gap-2 mb-2">
-               <label className="flex-1 bg-white/5 p-2 rounded text-xs text-gray-400 cursor-pointer flex items-center justify-center gap-2 border border-white/10">
-                 <FiUpload /> {tempCustom.image ? "Img Loaded" : "Upload Img"}
-                 <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, (url) => setTempCustom({...tempCustom, image: url}))} />
-               </label>
-               <button onClick={addCustomBox} className="bg-white/10 text-yellow-400 px-4 rounded font-bold hover:bg-white/20"><FiPlus /></button>
-             </div>
-             <div className="flex flex-wrap gap-2 mt-3">
-               {item.customFields?.map((f, i) => (
-                 <div key={i} className="bg-white/5 border border-white/20 px-3 py-1 rounded text-xs flex items-center gap-2">
-                   {f.image && <img src={f.image} className="w-4 h-4 rounded"/>}
-                   <span className="text-gray-300">{f.label}: {f.value}</span>
-                 </div>
-               ))}
-             </div>
-          </div>
+          <div className="bg-[#1a1a1a] p-3 md:p-4 rounded border border-yellow-400/30"><label className="text-xs font-bold text-yellow-400 uppercase block mb-2">Add Custom Box</label><div className="flex gap-2 mb-2"><select className="bg-[#222] text-white p-2 rounded text-sm w-1/3" value={customType} onChange={e => setCustomType(e.target.value)}><option value="text">Text Info</option><option value="number">Price Adder</option></select><input placeholder="Label" className="bg-[#222] text-white p-2 rounded text-sm w-1/3" value={tempCustom.label} onChange={e => setTempCustom({...tempCustom, label: e.target.value})} /><input placeholder="Value" className="bg-[#222] text-white p-2 rounded text-sm w-1/3" value={tempCustom.value} onChange={e => setTempCustom({...tempCustom, value: e.target.value})} /></div><div className="flex gap-2 mb-2"><label className="flex-1 bg-white/5 p-2 rounded text-xs text-gray-400 cursor-pointer flex items-center justify-center gap-2 border border-white/10"><FiUpload /> {tempCustom.image ? "Img Loaded" : "Upload Img"}<input type="file" className="hidden" onChange={(e) => handleImageUpload(e, (url) => setTempCustom({...tempCustom, image: url}))} /></label><button onClick={addCustomBox} className="bg-white/10 text-yellow-400 px-4 rounded font-bold hover:bg-white/20"><FiPlus /></button></div><div className="flex flex-wrap gap-2 mt-3">{item.customFields?.map((f, i) => <div key={i} className="bg-white/5 border border-white/20 px-3 py-1 rounded text-xs flex items-center gap-2">{f.image && <img src={f.image} className="w-4 h-4 rounded"/>}<span className="text-gray-300">{f.label}: {f.value}</span></div>)}</div></div>
 
-          {/* Emoji Tags */}
-          <div className="flex gap-2 flex-wrap">
-             {['None', 'Fire 🔥', 'Delicious 😋', 'Star ⭐'].map(tag => (
-               <button key={tag} onClick={() => setItem({...item, tag})} className={`px-3 py-2 rounded text-xs border ${item.tag === tag ? 'bg-yellow-400 text-black border-yellow-400' : 'bg-[#222] border-white/10'}`}>{tag}</button>
-             ))}
-          </div>
+          <div className="flex gap-2 flex-wrap">{['None', 'Fire 🔥', 'Delicious 😋', 'Star ⭐'].map(tag => <button key={tag} onClick={() => setItem({...item, tag})} className={`px-3 py-2 rounded text-xs border ${item.tag === tag ? 'bg-yellow-400 text-black border-yellow-400' : 'bg-[#222] border-white/10'}`}>{tag}</button>)}</div>
 
-          <button onClick={handlePublish} className="w-full bg-yellow-400 text-black font-bold py-4 rounded-xl hover:bg-yellow-300 transition-colors shadow-lg">
-            {isEditing ? 'UPDATE ITEM' : 'PUBLISH'}
-          </button>
+          <button onClick={handlePublish} className="w-full bg-yellow-400 text-black font-bold py-4 rounded-xl hover:bg-yellow-300 transition-colors shadow-lg">{isEditing ? 'UPDATE ITEM' : 'PUBLISH'}</button>
         </div>
       </div>
       
-      {/* ITEM LIST */}
-      <div className="bg-[#111] border border-white/10 p-4 md:p-6 rounded-xl h-[500px] md:h-[800px] overflow-y-auto">
-         <h3 className="font-bold text-white mb-4">Existing Items</h3>
-         {products.map(p => (
-           <div key={p.id} className="flex justify-between items-center p-3 border-b border-white/10 hover:bg-white/5 transition-colors">
-             <div className="flex items-center gap-3">
-               <img src={p.image} className="w-10 h-10 rounded object-cover bg-black" />
-               <div>
-                  <p className="font-bold text-sm text-white">{p.name}</p>
-                  <p className="text-xs text-gray-500">{p.category}</p>
-               </div>
-             </div>
-             <div className="flex gap-2">
-               <button onClick={() => handleEdit(p)} className="bg-white/10 p-2 rounded text-yellow-400 hover:bg-white/20"><FiEdit2 /></button>
-               <button onClick={() => deleteDoc(doc(db, "products", p.id))} className="bg-white/10 p-2 rounded text-red-500 hover:bg-white/20"><FiTrash2 /></button>
-             </div>
-           </div>
-         ))}
-      </div>
+      {/* LIST */}
+      <div className="bg-[#111] border border-white/10 p-4 md:p-6 rounded-xl h-[500px] md:h-[800px] overflow-y-auto"><h3 className="font-bold text-white mb-4">Existing Items</h3>{products.map(p => <div key={p.id} className="flex justify-between items-center p-3 border-b border-white/10 hover:bg-white/5 transition-colors"><div className="flex items-center gap-3"><img src={p.image} className="w-10 h-10 rounded object-cover bg-black" /><div><p className="font-bold text-sm text-white">{p.name}</p><p className="text-xs text-gray-500">{p.category}</p></div></div><div className="flex gap-2"><button onClick={() => handleEdit(p)} className="bg-white/10 p-2 rounded text-yellow-400 hover:bg-white/20"><FiEdit2 /></button><button onClick={() => deleteDoc(doc(db, "products", p.id))} className="bg-white/10 p-2 rounded text-red-500 hover:bg-white/20"><FiTrash2 /></button></div></div>)}</div>
     </div>
   );
 }
