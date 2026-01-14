@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import ProductCard from '../components/common/ProductCard';
-import { motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+import MenuSection from '../components/menu/MenuSection';
+import ProductModal from '../components/menu/ProductModal';
 
 export default function Menu() {
   const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null); // For Modal
   const [loading, setLoading] = useState(true);
 
-  // Define the EXACT order you want
-  const categoryOrder = ['Burger', 'Pizza', 'Wrapsters', 'Fried Chicken', 'Sandwiches', 'Nuggets', 'Fries', 'Dips & Sides', 'Desserts', 'Drinks'];
+  const categoryOrder = ['Deals', 'Burger', 'Pizza', 'Wrapsters', 'Fried Chicken', 'Sandwiches', 'Drinks'];
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -20,7 +21,6 @@ export default function Menu() {
     fetchProducts();
   }, []);
 
-  // Group products by category
   const groupedProducts = products.reduce((acc, product) => {
     const cat = product.category || 'Other';
     if (!acc[cat]) acc[cat] = [];
@@ -28,39 +28,43 @@ export default function Menu() {
     return acc;
   }, {});
 
-  if (loading) return <div className="min-h-screen pt-32 text-center text-white">Loading Menu...</div>;
-
   return (
-    <div className="min-h-screen pt-24 px-4 pb-12">
-      <div className="container mx-auto">
-        <h1 className="text-4xl md:text-6xl font-serif font-bold text-center mb-12">
-          The <span className="text-primary">Collection</span>
+    <div className="min-h-screen bg-dark w-full pt-24 px-4 pb-20 overflow-x-hidden">
+      
+      {/* Page Title */}
+      <div className="container mx-auto text-center mb-12">
+        <h1 className="text-4xl md:text-6xl font-serif font-bold mb-4">
+          Our <span className="text-primary">Menu</span>
         </h1>
-
-        {/* Map through categories in specific order */}
-        {categoryOrder.map((category) => {
-          const categoryItems = groupedProducts[category];
-          if (!categoryItems || categoryItems.length === 0) return null;
-
-          return (
-            <div key={category} className="mb-16">
-              <motion.h2 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                className="text-2xl font-bold text-white mb-6 border-l-4 border-primary pl-4 uppercase tracking-widest"
-              >
-                {category}
-              </motion.h2>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {categoryItems.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <p className="text-gray-400">Select a category to browse</p>
       </div>
+
+      <div className="container mx-auto">
+        {loading ? (
+          <div className="text-center text-white">Loading delicious items...</div>
+        ) : (
+          categoryOrder.map((category) => (
+            <MenuSection 
+              key={category} 
+              title={category} 
+              products={groupedProducts[category]} 
+              onProductClick={setSelectedProduct} 
+            />
+          ))
+        )}
+      </div>
+
+      {/* POPUP MODAL */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <ProductModal 
+            product={selectedProduct} 
+            isOpen={!!selectedProduct} 
+            onClose={() => setSelectedProduct(null)} 
+          />
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

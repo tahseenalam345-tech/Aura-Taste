@@ -6,34 +6,35 @@
   body {
     @apply bg-dark text-white font-sans;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
-    /* Use dynamic viewport height for mobile browsers */
-    min-height: 100dvh;
-    overflow-x: hidden;
-    overflow-y: auto;
   }
 }
 
-/* --- CRITICAL SCROLL FIXES --- */
-html, body {
+/* --- FULL PAGE SCROLL SNAP --- */
+html {
+  /* This enables the snapping behavior */
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
   height: 100%;
-  margin: 0;
-  padding: 0;
-  /* Allow vertical scroll but prevent horizontal */
-  touch-action: pan-y; 
-  -webkit-overflow-scrolling: touch;
+  overflow-y: scroll;
+}
+
+body {
+  height: 100%;
+  overflow-y: scroll;
 }
 
 #root {
-  /* Allow the app to be at least full screen */
-  min-height: 100dvh;
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
+  height: 100%;
 }
 
-/* --- BACKGROUND LAYER FIX --- */
-/* Ensures stars are visible but NEVER block clicks/swipes */
+/* Sections must be full height to snap correctly */
+section, .snap-section {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* --- UTILITIES --- */
+/* Ensures stars are fixed behind everything */
 #star-canvas-container {
   position: fixed;
   top: 0;
@@ -44,14 +45,6 @@ html, body {
   pointer-events: none;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #050505;
-}
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 10px;
+  width: 0px; /* Hide scrollbar for cleaner look */
 }
