@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiShoppingBag, FiUser, FiBell } from 'react-icons/fi';
+import { FiShoppingBag, FiUser } from 'react-icons/fi';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
@@ -75,10 +75,17 @@ export default function Navbar() {
           </Link>
 
           {/* ICONS (Right Side) */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4 md:gap-5">
+            
+            {/* FIXED: Removed 'hidden md:block' so Admin shows on Mobile */}
             {isAdmin && (
-               <Link to="/admin" className="relative text-red-500 font-bold text-xs uppercase hidden md:block">
-                 ADMIN {pendingCount > 0 && <span className="absolute -top-2 -right-3 bg-red-600 text-white px-1 rounded-full text-[10px]">{pendingCount}</span>}
+               <Link to="/admin" className="relative text-red-500 font-bold text-xs uppercase flex items-center gap-1 border border-red-500/50 px-2 py-1 rounded hover:bg-red-500 hover:text-white transition-colors">
+                 ADMIN 
+                 {pendingCount > 0 && (
+                   <span className="bg-white text-red-600 px-1.5 rounded-full text-[10px] font-extrabold animate-pulse">
+                     {pendingCount}
+                   </span>
+                 )}
                </Link>
             )}
 
