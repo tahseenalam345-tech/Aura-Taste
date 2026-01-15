@@ -5,37 +5,23 @@
 @layer base {
   body {
     @apply bg-dark text-white font-sans;
-    /* Disable default body scroll, we handle it in #root */
-    overflow: hidden; 
+    /* Restore natural scrolling */
+    overflow-x: hidden; 
+    overflow-y: auto;
     margin: 0;
     padding: 0;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
   }
 }
 
-/* --- APP-LIKE SCROLLING CONTAINER --- */
-.app-container {
-  height: 100vh; /* Full Viewport Height */
-  width: 100vw;
-  overflow-y: scroll; /* Allow vertical scrolling */
-  scroll-snap-type: y mandatory; /* Force snapping */
+html {
   scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch; /* Smooth momentum scroll on iOS */
-  position: relative;
 }
 
-/* --- THE SNAP TARGETS --- */
-/* Apply this class to your Pages (Home, Menu) and Footer */
-.snap-section {
-  scroll-snap-align: start; /* Snap to the top of this element */
-  scroll-snap-stop: always; /* Force stop (don't skip sections) */
-  min-height: 100vh; /* Ensure it takes at least full screen */
-  width: 100%;
-}
-
-/* --- UTILITIES --- */
 #root {
-  height: 100vh;
+  min-height: 100vh;
+  position: relative;
+  z-index: 10;
 }
 
 #star-canvas-container {
@@ -48,14 +34,8 @@
   pointer-events: none;
 }
 
-/* Hide Scrollbar for cleaner look (Optional) */
-.app-container::-webkit-scrollbar {
-  width: 6px;
-}
-.app-container::-webkit-scrollbar-track {
+/* Hide scrollbar but allow scrolling */
+::-webkit-scrollbar {
+  width: 0px;
   background: transparent;
-}
-.app-container::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
 }
