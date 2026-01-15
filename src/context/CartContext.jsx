@@ -1,58 +1,67 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 
 const CartContext = createContext();
 
-export const CartProvider = ({ children }) => {
-  // Load cart from LocalStorage so data isn't lost on refresh
-  const [cart, setCart] = useState(() => {
-    const saved = localStorage.getItem('aura-cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+export function useCart() {
+  return useContext(CartContext);
+}
 
-  // Save to LocalStorage whenever cart changes
+export function CartProvider({ children }) {
+  const [cart, setCart] = useState([]);
+
+  // Load Cart from LocalStorage
   useEffect(() => {
-    localStorage.setItem('aura-cart', JSON.stringify(cart));
+    const savedCart = localStorage.getItem('aura_cart');
+    if (savedCart) setCart(JSON.parse(savedCart));
+  }, []);
+
+  // Save Cart to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('aura_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Add Item Function
-  const addToCart = (product, quantity = 1) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+  const addToCart = (product) => {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === product.id);
       if (existing) {
-        // If item exists, just increase quantity
-        return prev.map(item => 
-          item.id === product.id ? { ...item, qty: item.qty + quantity } : item
+        return prev.map((item) =>
+          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
         );
       }
-      // If new item, add to array
-      return [...prev, { ...product, qty: quantity }];
+      return [...prev, { ...product, qty: 1 }];
     });
   };
 
-  // Remove Item Function
   const removeFromCart = (id) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+    setCart((prev) => prev.filter((item) => item.id !== id));
+    toast.success("Item removed");
   };
-// Decrease Item Quantity
-  const decreaseQuantity = (id) => {
-    setCart(prev => {
-      return prev.map(item => {
-        if (item.id === id) {
-          return { ...item, qty: item.qty - 1 };
-        }
-        return item;
-      }).filter(item => item.qty > 0); // Remove item if quantity becomes 0
-    });
+
+  const updateQty = (id, newQty) => {
+    if (newQty < 1) return;
+    setCart((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, qty: newQty } : item))
+    );
   };
-  // Calculate Total Price
-  const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
-  return (
-   <CartContext.Provider value={{ cart, addToCart, removeFromCart, decreaseQuantity, total, setCart }}>
-      {children}
-    </CartContext.Provider>
-  );
-};
+  // --- CRITICAL FIX: Define clearCart ---
+  const clearCart = () => {
+    setCart([]); // Empty the state
+    localStorage.removeItem('aura_cart'); // Clear local storage
+  };
 
+  const cartTotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
 
-export const useCart = () => useContext(CartContext);
+  const value = {
+    cart,
+    addToCart,
+    removeFromCart,
+    updateQty,
+    clearCart, // <--- Exporting it here so CheckoutModal can use it
+    cartTotal,
+    cartItems: cart // Alias for Navbar count
+  };
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}

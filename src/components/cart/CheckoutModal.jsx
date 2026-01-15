@@ -6,11 +6,12 @@ import { db } from '../../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-hot-toast';
+// FIX: Default Import for Toast (Prevents import errors)
+import toast from 'react-hot-toast';
 
 export default function CheckoutModal({ isOpen, onClose }) {
   const navigate = useNavigate();
-  const { cart, clearCart, cartTotal } = useCart();
+  const { cart, clearCart, cartTotal } = useCart(); // clearCart comes from here
   const { user } = useAuth();
 
   const [step, setStep] = useState(1); 
@@ -20,8 +21,9 @@ export default function CheckoutModal({ isOpen, onClose }) {
   const [details, setDetails] = useState({
     branch: '', time: '', table: '', name: '', phone: '', email: '', address: '', instructions: '', saveDetails: false
   });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const branches = ['Kharian GT Road', 'Kharian Guliyana Road', 'Kharian Dinga Road'];
 
-  // Load User Data if Logged In
   useEffect(() => {
     if (user) {
       setDetails(prev => ({
@@ -33,9 +35,6 @@ export default function CheckoutModal({ isOpen, onClose }) {
     const saved = localStorage.getItem('aura_saved_addresses');
     if (saved) setSavedAddresses(JSON.parse(saved));
   }, [user]);
-
-  const [savedAddresses, setSavedAddresses] = useState([]);
-  const branches = ['Kharian GT Road', 'Kharian Guliyana Road', 'Kharian Dinga Road'];
 
   const getTimeSlots = () => {
     const slots = [];
@@ -64,15 +63,14 @@ export default function CheckoutModal({ isOpen, onClose }) {
         localStorage.setItem('aura_saved_addresses', JSON.stringify(updated));
       }
 
-      // --- CRITICAL FIX: SANITIZE DATA ---
-      // Firestore crashes on 'undefined'. We force 'null' for empty fields.
+      // 1. Prepare Data
       const orderData = {
         userEmail: user?.email || 'Guest',
         userId: user?.uid || 'guest',
         method: method || 'Unknown',
         status: 'Pending',
         createdAt: new Date(),
-        totalAmount: Number(cartTotal) || 0, // Force Number
+        totalAmount: Number(cartTotal) || 0,
         items: cart.map(item => ({
           id: item.id || 'unknown',
           name: item.name || 'Unknown Item',
@@ -93,16 +91,24 @@ export default function CheckoutModal({ isOpen, onClose }) {
         tableNumber: details.table || null
       };
 
+      // 2. Send to Firebase
       await addDoc(collection(db, "orders"), orderData);
       
-      clearCart();
+      // 3. Success Actions
+      // Safety check: if clearCart is missing, don't crash
+      if (typeof clearCart === 'function') {
+        clearCart();
+      } else {
+        console.warn("clearCart is not a function in context");
+      }
+
       toast.success("Order Placed Successfully! 🚀");
       onClose();
       navigate('/delivery'); 
 
     } catch (error) {
-      console.error("FIREBASE ERROR:", error); // Check Console for red text if this happens
-      toast.error(`Order Failed: ${error.message}`);
+      console.error("ORDER ERROR:", error);
+      toast.error("Failed to place order. Check details.");
     } finally {
       setLoading(false);
     }

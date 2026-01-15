@@ -5,24 +5,37 @@
 @layer base {
   body {
     @apply bg-dark text-white font-sans;
+    /* Disable default body scroll, we handle it in #root */
+    overflow: hidden; 
+    margin: 0;
+    padding: 0;
     background-image: radial-gradient(circle at 50% -20%, #2a2a2a 0%, #050505 40%);
-    min-height: 100vh;
-    overflow-x: hidden;
-    overflow-y: auto;
   }
 }
 
-html, body {
-  height: auto !important;
-  min-height: 100% !important;
-  touch-action: pan-y !important;
-  -webkit-overflow-scrolling: touch;
+/* --- APP-LIKE SCROLLING CONTAINER --- */
+.app-container {
+  height: 100vh; /* Full Viewport Height */
+  width: 100vw;
+  overflow-y: scroll; /* Allow vertical scrolling */
+  scroll-snap-type: y mandatory; /* Force snapping */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* Smooth momentum scroll on iOS */
+  position: relative;
 }
 
+/* --- THE SNAP TARGETS --- */
+/* Apply this class to your Pages (Home, Menu) and Footer */
+.snap-section {
+  scroll-snap-align: start; /* Snap to the top of this element */
+  scroll-snap-stop: always; /* Force stop (don't skip sections) */
+  min-height: 100vh; /* Ensure it takes at least full screen */
+  width: 100%;
+}
+
+/* --- UTILITIES --- */
 #root {
-  min-height: 100vh;
-  position: relative;
-  z-index: 10;
+  height: 100vh;
 }
 
 #star-canvas-container {
@@ -35,23 +48,14 @@ html, body {
   pointer-events: none;
 }
 
-/* --- THE SMOOTH MARQUEE ANIMATION --- */
-@keyframes scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+/* Hide Scrollbar for cleaner look (Optional) */
+.app-container::-webkit-scrollbar {
+  width: 6px;
 }
-
-.animate-scroll {
-  display: flex;
-  width: max-content; /* Critical for loop */
-  animation: scroll 30s linear infinite; /* Smooth continuous movement */
+.app-container::-webkit-scrollbar-track {
+  background: transparent;
 }
-
-/* Pause when user hovers to click */
-.animate-scroll:hover {
-  animation-play-state: paused;
+.app-container::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
 }
-
-/* Hide scrollbars */
-.scrollbar-hide::-webkit-scrollbar { display: none; }
-.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

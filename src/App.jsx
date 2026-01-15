@@ -7,8 +7,8 @@ import { AuthProvider } from './context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion'; 
 
 // --- IMPORTS ---
-import Navbar from './components/layout/Navbar'; // Updated path
-import Footer from './components/layout/Footer'; // Make sure you import Footer!
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import Cart from './pages/Cart';
@@ -18,9 +18,9 @@ import Deals from './pages/Deals';
 import Delivery from './pages/Delivery'; 
 import MakeYourDeal from './pages/MakeYourDeal';
 import InstallButton from './components/common/InstallButton'; 
-import WhatsAppButton from './components/common/WhatsAppButton'; // New Button
+import WhatsAppButton from './components/common/WhatsAppButton';
 
-// --- 3D BACKGROUND ---
+// --- 3D BACKGROUND (Fixed Position) ---
 function StarBackground() {
   return (
     <div id="star-canvas-container" className="fixed inset-0 bg-dark pointer-events-none -z-10">
@@ -31,13 +31,14 @@ function StarBackground() {
   );
 }
 
-// --- PAGE ANIMATION WRAPPER ---
+// --- PAGE ANIMATION WRAPPER (Now a Snap Section) ---
 const PageWrapper = ({ children }) => {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="relative z-10 w-full"
+      transition={{ duration: 0.5 }}
+      // 'snap-section' makes this div the target for the scroll/swipe
+      className="snap-section relative z-10 w-full flex flex-col justify-start pt-20 md:pt-24"
     >
       {children}
     </motion.div>
@@ -70,25 +71,30 @@ function App() {
       <AuthProvider>
         <CartProvider>
           
-          {/* 1. Global Background */}
           <StarBackground />
-          
-          {/* 2. Global Notifications */}
           <Toaster position="top-center" toastOptions={{ style: { background: '#1a1a1a', color: '#fff', border: '1px solid #FFD700' }}} />
 
-          {/* 3. Main Layout Structure */}
-          <div className="flex flex-col min-h-screen bg-transparent font-sans relative z-10">
-            <Navbar />
+          {/* MASTER CONTAINER 
+             - 'app-container' (from index.css) enables the snap scrolling
+             - This div is the only one that scrolls. Body scroll is disabled.
+          */}
+          <div className="app-container font-sans text-white">
             
-            {/* Main Content Grows to Push Footer Down */}
-            <main className="flex-grow">
+            <Navbar /> {/* Fixed to top, outside the scroll flow */}
+            
+            {/* Main Content Area */}
+            <main className="w-full">
               <AnimatedRoutes />
             </main>
             
-            <Footer />
+            {/* Footer is its own Snap Section. Swipe up from bottom of page to see it. */}
+            <div className="snap-section flex flex-col justify-end bg-black">
+               <Footer />
+            </div>
+
           </div>
 
-          {/* 4. Floating Buttons (Outside Layout) */}
+          {/* Fixed Floating Buttons */}
           <InstallButton />
           <WhatsAppButton />
 

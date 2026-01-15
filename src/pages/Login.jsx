@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { FiGoogle } from 'react-icons/fi'; // Using FiGoogle or generic G icon
+// FIX: Changed FiGoogle (which doesn't exist) to FcGoogle (Standard Google Icon)
+import { FcGoogle } from 'react-icons/fc'; 
 
 export default function Login() {
   const { loginWithGoogle, login, signup } = useAuth();
@@ -49,7 +50,7 @@ export default function Login() {
           onClick={handleGoogle} 
           className="w-full bg-white text-black font-bold py-3 rounded-xl flex items-center justify-center gap-3 mb-6 hover:bg-gray-200 transition-colors"
         >
-          <FiGoogle /> Continue with Google
+          <FcGoogle size={24} /> Continue with Google
         </button>
 
         <div className="flex items-center gap-4 mb-6">
