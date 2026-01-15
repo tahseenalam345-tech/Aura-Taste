@@ -7,7 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion'; 
 
 // IMPORTS
-import Navbar from './components/common/Navbar';
+import Navbar from './components/layout/Navbar';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import Cart from './pages/Cart';
@@ -17,6 +17,7 @@ import Deals from './pages/Deals';
 import Delivery from './pages/Delivery'; 
 import MakeYourDeal from './pages/MakeYourDeal';
 import InstallButton from './components/common/InstallButton'; 
+import WhatsAppButton from './components/common/WhatsAppButton';
 
 // Find this function in src/App.jsx and replace it:
 function StarBackground() {
@@ -29,6 +30,7 @@ function StarBackground() {
     </div>
   );
 }
+
 
 const PageWrapper = ({ children }) => {
   return (
@@ -57,6 +59,30 @@ function AnimatedRoutes() {
         <Route path="/make-deal" element={<PageWrapper><MakeYourDeal /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
+  );
+}
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <CartProvider>
+          <div className="flex flex-col min-h-screen bg-dark text-white font-sans">
+            <CanvasBackground />
+            <Navbar />
+            <main className="flex-grow z-10 relative">
+              <Routes>
+                 {/* ... your routes ... */}
+              </Routes>
+            </main>
+            <Footer />
+            
+            {/* ADD THIS LINE HERE: */}
+            <WhatsAppButton />
+            
+          </div>
+        </CartProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 
