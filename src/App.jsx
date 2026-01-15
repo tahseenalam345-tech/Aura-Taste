@@ -6,8 +6,9 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion'; 
 
-// IMPORTS
-import Navbar from './components/layout/Navbar';
+// --- IMPORTS ---
+import Navbar from './components/layout/Navbar'; // Updated path
+import Footer from './components/layout/Footer'; // Make sure you import Footer!
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import Cart from './pages/Cart';
@@ -17,13 +18,12 @@ import Deals from './pages/Deals';
 import Delivery from './pages/Delivery'; 
 import MakeYourDeal from './pages/MakeYourDeal';
 import InstallButton from './components/common/InstallButton'; 
-import WhatsAppButton from './components/common/WhatsAppButton';
+import WhatsAppButton from './components/common/WhatsAppButton'; // New Button
 
-// Find this function in src/App.jsx and replace it:
+// --- 3D BACKGROUND ---
 function StarBackground() {
   return (
-    // We added id="star-canvas-container" here
-    <div id="star-canvas-container" className="fixed inset-0 bg-dark pointer-events-none">
+    <div id="star-canvas-container" className="fixed inset-0 bg-dark pointer-events-none -z-10">
       <Canvas camera={{ position: [0, 0, 1] }}>
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
       </Canvas>
@@ -31,7 +31,7 @@ function StarBackground() {
   );
 }
 
-
+// --- PAGE ANIMATION WRAPPER ---
 const PageWrapper = ({ children }) => {
   return (
     <motion.div
@@ -44,6 +44,7 @@ const PageWrapper = ({ children }) => {
   );
 };
 
+// --- ANIMATED ROUTES ---
 function AnimatedRoutes() {
   const location = useLocation();
   return (
@@ -61,48 +62,36 @@ function AnimatedRoutes() {
     </AnimatePresence>
   );
 }
-function App() {
-  return (
-    <Router>
-      <AuthProvider>
-        <CartProvider>
-          <div className="flex flex-col min-h-screen bg-dark text-white font-sans">
-            <CanvasBackground />
-            <Navbar />
-            <main className="flex-grow z-10 relative">
-              <Routes>
-                 {/* ... your routes ... */}
-              </Routes>
-            </main>
-            <Footer />
-            
-            {/* ADD THIS LINE HERE: */}
-            <WhatsAppButton />
-            
-          </div>
-        </CartProvider>
-      </AuthProvider>
-    </Router>
-  );
-}
 
+// --- MAIN APP COMPONENT ---
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <CartProvider>
-          {/* Background forced to back */}
+          
+          {/* 1. Global Background */}
           <StarBackground />
           
-          <Navbar />
-          <InstallButton />
-          
+          {/* 2. Global Notifications */}
           <Toaster position="top-center" toastOptions={{ style: { background: '#1a1a1a', color: '#fff', border: '1px solid #FFD700' }}} />
-          
-          <div className="relative z-10">
-             <AnimatedRoutes />
+
+          {/* 3. Main Layout Structure */}
+          <div className="flex flex-col min-h-screen bg-transparent font-sans relative z-10">
+            <Navbar />
+            
+            {/* Main Content Grows to Push Footer Down */}
+            <main className="flex-grow">
+              <AnimatedRoutes />
+            </main>
+            
+            <Footer />
           </div>
-          
+
+          {/* 4. Floating Buttons (Outside Layout) */}
+          <InstallButton />
+          <WhatsAppButton />
+
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>
